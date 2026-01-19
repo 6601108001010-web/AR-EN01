@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR English Eat - M.1 (Level Up - Offline)</title>
+    <title>AR English Eat - M.1 (Level Up)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    
     <style>
         body { overscroll-behavior: none; background-color: #1a202c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         /* Canvas ถูก Flip เพื่อให้เหมือนกระจก */
@@ -26,7 +24,6 @@
             70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(168, 85, 247, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
         }
-        /* Custom Scrollbar */
         .scroll-content::-webkit-scrollbar { width: 8px; }
         .scroll-content::-webkit-scrollbar-track { background: #2d3748; border-radius: 4px; }
         .scroll-content::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
@@ -64,7 +61,7 @@
         <div id="screen-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
             <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
                 <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
-                <p class="text-center text-gray-400 mb-8">M.1 Level Up (Offline Ver.)</p>
+                <p class="text-center text-gray-400 mb-8">M.1 Level Up</p>
                 
                 <div class="space-y-4">
                     <div>
@@ -109,13 +106,12 @@
             <div class="floating text-6xl mb-4">😲</div>
             <h2 class="text-3xl font-bold text-yellow-400 mb-4">How to Play</h2>
             <ul class="text-left space-y-3 text-gray-300 mb-8 max-w-sm mx-auto">
-                <li>1. Read the question at the top.</li>
+                <li>1. Read the question.</li>
                 <li>2. Find the falling answer.</li>
-                <li>3. <b>Open your mouth</b> near the correct word to eat it!</li>
-                <li>4. Don't eat the wrong words!</li>
+                <li>3. <b>Open your mouth</b> to eat the correct word!</li>
             </ul>
             <div class="h-64 overflow-y-auto w-full max-w-md bg-gray-800 rounded-lg p-4 mb-4 border border-gray-700 scroll-content">
-                <h3 class="text-purple-400 font-bold mb-2 sticky top-0 bg-gray-800 pb-2">Vocabulary Cheat Sheet</h3>
+                <h3 class="text-purple-400 font-bold mb-2 sticky top-0 bg-gray-800 pb-2">Vocabulary (M.1)</h3>
                 <div id="cheat-list" class="space-y-2 text-sm"></div>
             </div>
             <button id="tutorial-btn" class="px-8 py-3 bg-purple-600 rounded-full font-bold shadow-lg">I'm Ready!</button>
@@ -124,11 +120,11 @@
         <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6">
             <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30 shadow-2xl">
                 <h2 class="text-2xl font-bold text-white mb-2">Bonus Round! 🎤</h2>
-                <p class="text-gray-400 mb-6">Say this word to get bonus points:</p>
+                <p class="text-gray-400 mb-6">Say this word:</p>
                 
                 <div class="mb-8">
-                    <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-2">BANANA</div>
-                    <div id="speech-phonetic" class="text-gray-500 font-mono">/bəˈnænə/</div>
+                    <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-2">TARGET</div>
+                    <div id="speech-phonetic" class="text-gray-500 font-mono">...</div>
                 </div>
 
                 <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">Click mic and speak...</div>
@@ -156,10 +152,7 @@
 
                 <div class="space-y-3 w-full max-w-xs">
                     <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Again</button>
-                    <button onclick="exportToExcel()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl shadow hover:bg-green-500 flex justify-center items-center gap-2">
-                        <span>📥</span> Save Score (Excel)
-                    </button>
-                </div>
+                    </div>
             </div>
         </div>
 
@@ -191,22 +184,26 @@
 <script>
 // --- CONFIGURATION ---
 const CONFIG = {
-    mouthThreshold: 0.05, // ความกว้างปากที่ถือว่า "อ้า"
-    eatDistance: 60,      // ระยะห่างระหว่างปากกับคำศัพท์ (pixel)
-    gravity: 2.0,         // ความเร็วตก
-    spawnRate: 120,       // ความถี่ในการเกิดคำ (frames)
-    totalQuestions: 5     // จำนวนข้อต่อรอบ
+    mouthThreshold: 0.05,
+    eatDistance: 60,
+    gravity: 2.0,
+    spawnRate: 120,
+    totalQuestions: 5
 };
 
-// --- DATABASE (QUESTIONS) ---
+// --- DATABASE (QUESTIONS - M.1 LEVEL) ---
+// เนื้อหา: Past Tense, Places, Occupations, Antonyms, General Knowledge
 const QUESTIONS_DB = [
-    { q: "What fruit is yellow?", list: ["Banana", "Apple", "Grape", "Red", "Cat"], correct: ["Banana"] },
-    { q: "Which one is an animal?", list: ["Dog", "Car", "Tree", "Blue", "Book"], correct: ["Dog"] },
-    { q: "What color is the sky?", list: ["Blue", "Green", "Red", "Yellow", "Cow"], correct: ["Blue"] },
-    { q: "Opposite of 'Hot'?", list: ["Cold", "Warm", "Fire", "Big", "Sun"], correct: ["Cold"] },
-    { q: "You use this to write.", list: ["Pen", "Spoon", "Shoe", "Car", "Apple"], correct: ["Pen"] },
-    { q: "Which one can fly?", list: ["Bird", "Pig", "Dog", "Fish", "Cat"], correct: ["Bird"] },
-    { q: "Number after One?", list: ["Two", "Six", "Ten", "Zero", "Five"], correct: ["Two"] }
+    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going", "Good"], correct: ["Went"] },
+    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring", "Boat"], correct: ["Bought"] },
+    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Hard", "Small", "Gold"], correct: ["Cheap"] },
+    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo", "Park", "Shop"], correct: ["Library"] },
+    { q: "Who works in a hospital?", list: ["Doctor", "Teacher", "Pilot", "Chef", "Artist"], correct: ["Doctor"] },
+    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo", "Phuket", "China"], correct: ["Bangkok"] },
+    { q: "Twelve months make a...?", list: ["Year", "Week", "Day", "Hour", "Time"], correct: ["Year"] },
+    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard", "Big", "Easy"], correct: ["Safe"] },
+    { q: "Subject about numbers?", list: ["Math", "Art", "Music", "Thai", "Gym"], correct: ["Math"] },
+    { q: "What is H2O?", list: ["Water", "Fire", "Air", "Earth", "Gold"], correct: ["Water"] }
 ];
 
 // --- STATE MANAGEMENT ---
@@ -249,18 +246,17 @@ let gameState = {
     isPlaying: false,
     score: 0,
     qIndex: 0,
-    items: [], // Words falling
+    items: [],
     mouthPos: { x: 0, y: 0 },
     isMouthOpen: false,
     cameraReady: false,
     frameCount: 0,
     currentQuestion: null,
     user: { name: "", number: "" },
-    history: [] // Local storage for session
+    history: []
 };
 
 // --- INITIALIZATION ---
-// Populate Cheat Sheet
 function initCheatSheet() {
     ELEMENTS.ui.cheatList.innerHTML = QUESTIONS_DB.map((q, i) => `
         <div class="bg-gray-700/50 p-3 rounded-lg border border-gray-600/50 text-left">
@@ -299,7 +295,6 @@ function submitLogin() {
     
     gameState.user = { name, number: num };
     
-    // Update UI
     document.getElementById('display-name').innerText = name;
     document.getElementById('display-number').innerText = `#${num}`;
     document.getElementById('end-name').innerText = name;
@@ -308,7 +303,7 @@ function submitLogin() {
     ELEMENTS.screens.login.classList.add('hidden');
     ELEMENTS.screens.load.classList.remove('hidden');
     
-    startCamera(); // Start camera after login
+    startCamera();
 }
 
 function startGame() {
@@ -327,7 +322,18 @@ function startGame() {
     
     loadQuestion();
     requestAnimationFrame(gameLoop);
+    
+    // Auto-close tutorial button setup
+    document.getElementById('tutorial-btn').onclick = () => {
+        ELEMENTS.screens.tutorial.classList.add('hidden');
+        startGame(); // Re-trigger ensures cleanness if called from end screen
+    };
 }
+// Fix circular logic in tutorial button (simply hide tutorial)
+document.getElementById('tutorial-btn').onclick = () => {
+    ELEMENTS.screens.tutorial.classList.add('hidden');
+    // Game loop is already requested in startGame, just ensure HUD is visible
+};
 
 function loadQuestion() {
     if (gameState.qIndex >= CONFIG.totalQuestions || gameState.qIndex >= QUESTIONS_DB.length) {
@@ -338,7 +344,7 @@ function loadQuestion() {
     gameState.currentQuestion = QUESTIONS_DB[gameState.qIndex];
     ELEMENTS.ui.question.innerText = gameState.currentQuestion.q;
     ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    gameState.items = []; // Clear old items
+    gameState.items = [];
     speakQuestion();
 }
 
@@ -349,30 +355,25 @@ function restartGame() {
 
 // --- LOGIC: GAME LOOP ---
 function onResults(results) {
-    // 1. Draw Video
     ctx.save();
     ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-    // Note: Canvas is flipped by CSS, so we draw normal here.
     ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
 
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
         
-        // Detect Mouth (Upper: 13, Lower: 14)
+        // Mouth (Upper: 13, Lower: 14)
         const upper = landmarks[13];
         const lower = landmarks[14];
         
-        // Convert to pixel coords
         const x = upper.x * ELEMENTS.canvas.width;
         const y = (upper.y + lower.y) / 2 * ELEMENTS.canvas.height;
         
         gameState.mouthPos = { x, y };
         
-        // Check openness
         const distance = Math.abs(upper.y - lower.y);
         gameState.isMouthOpen = distance > CONFIG.mouthThreshold;
 
-        // Visual Debug for Mouth
         ctx.beginPath();
         ctx.arc(x, y, 10, 0, 2 * Math.PI);
         ctx.fillStyle = gameState.isMouthOpen ? "rgba(0, 255, 0, 0.5)" : "rgba(255, 0, 0, 0.3)";
@@ -391,50 +392,39 @@ function onResults(results) {
 function gameLoop() {
     if (!gameState.isPlaying) return;
 
-    // Drawing Game Elements (Text needs to be drawn "flipped" because canvas is flipped)
     ctx.save();
-    
-    // Spawn Items
     gameState.frameCount++;
     if (gameState.frameCount % CONFIG.spawnRate === 0) {
         spawnItem();
     }
 
-    // Process Items
     for (let i = gameState.items.length - 1; i >= 0; i--) {
         let item = gameState.items[i];
         item.y += CONFIG.gravity;
 
-        // Draw Word
-        // FIX: Because canvas is flipped X (-1), text will be backwards.
-        // We need to un-flip context at the item position to draw readable text.
         ctx.save();
         ctx.translate(item.x, item.y);
-        ctx.scale(-1, 1); // Flip back for text
+        ctx.scale(-1, 1); // Flip text back
         
         ctx.font = "bold 24px sans-serif";
-        ctx.fillStyle = item.isCorrect ? "#4ade80" : "#f87171"; // Green or Red hint (optional, usually all white)
         ctx.fillStyle = "white";
         ctx.shadowColor = "black";
         ctx.shadowBlur = 4;
-        ctx.fillText(item.text, -ctx.measureText(item.text).width / 2, 0); // Center text
+        ctx.fillText(item.text, -ctx.measureText(item.text).width / 2, 0);
         ctx.restore();
 
-        // Check Collision (Eat)
         if (gameState.isMouthOpen) {
             const dx = gameState.mouthPos.x - item.x;
             const dy = gameState.mouthPos.y - item.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
             if (dist < CONFIG.eatDistance) {
-                // EAT!
                 handleEat(item);
                 gameState.items.splice(i, 1);
                 continue;
             }
         }
 
-        // Remove if off screen
         if (item.y > ELEMENTS.canvas.height) {
             gameState.items.splice(i, 1);
         }
@@ -450,14 +440,12 @@ function spawnItem() {
     const margin = 50;
     const x = margin + Math.random() * (ELEMENTS.canvas.width - margin * 2);
     
-    // 40% chance of correct word
     const isCorrect = Math.random() < 0.4;
     let text = "";
     
     if (isCorrect) {
-        text = gameState.currentQuestion.correct[0]; // Simple logic
+        text = gameState.currentQuestion.correct[0];
     } else {
-        // Pick wrong answer from list
         const wrongs = gameState.currentQuestion.list.filter(w => !gameState.currentQuestion.correct.includes(w));
         text = wrongs[Math.floor(Math.random() * wrongs.length)];
     }
@@ -467,19 +455,15 @@ function spawnItem() {
 
 function handleEat(item) {
     if (item.isCorrect) {
-        // Correct
         gameState.score += 10;
-        showToast("Delicious! +10", "green");
-        
-        // Go to Speech Mode or Next Question
+        showToast("Correct! +10", "green");
         gameState.isPlaying = false;
         setTimeout(() => {
              startSpeechRound(item.text);
         }, 500);
     } else {
-        // Wrong
         gameState.score = Math.max(0, gameState.score - 5);
-        showToast("Yuck! -5");
+        showToast("Wrong! -5");
         ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
     }
 }
@@ -519,7 +503,6 @@ function startSpeechRecognition() {
         ELEMENTS.ui.speechStatus.className = "h-8 text-sm text-gray-300 mb-4";
 
         if (transcript.includes(target) || target.includes(transcript)) {
-            // Success
             showToast("Perfect! +20", "green");
             gameState.score += 20;
             setTimeout(skipSpeech, 1500);
@@ -544,7 +527,6 @@ function skipSpeech() {
     requestAnimationFrame(gameLoop);
 }
 
-// --- LOGIC: AUDIO ---
 function speakQuestion() {
     if(gameState.currentQuestion) {
         const u = new SpeechSynthesisUtterance(gameState.currentQuestion.q);
@@ -578,7 +560,6 @@ function openAdminPanel() {
     ELEMENTS.screens.admin.classList.remove('hidden');
     const tbody = document.getElementById('admin-table-body');
     
-    // Show current session history
     if (gameState.history.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No data in this session.</td></tr>';
     } else {
@@ -600,7 +581,6 @@ function gameOver() {
     ELEMENTS.screens.end.classList.remove('hidden');
     ELEMENTS.ui.finalScore.innerText = gameState.score;
     
-    // Save to local history
     const record = {
         name: gameState.user.name,
         number: gameState.user.number,
@@ -610,17 +590,6 @@ function gameOver() {
     gameState.history.push(record);
 }
 
-function exportToExcel() {
-    // Export current history
-    if(gameState.history.length === 0) { showToast("No data to export"); return; }
-    
-    const ws = XLSX.utils.json_to_sheet(gameState.history);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Scores");
-    XLSX.writeFile(wb, "AR_English_Scores.xlsx");
-}
-
-// Resize Handling
 function resize() {
     ELEMENTS.canvas.width = window.innerWidth;
     ELEMENTS.canvas.height = window.innerHeight;
