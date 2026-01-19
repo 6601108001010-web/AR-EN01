@@ -1,188 +1,88 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AR English Eat - M.1</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AR English Eat</title>
 
-<!-- Tailwind -->
-<script src="https://cdn.tailwindcss.com"></script>
-
-<!-- MediaPipe -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-
-<!-- SheetJS -->
-<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <style>
-body { background:#111827; color:white; overflow:hidden }
-canvas { position:absolute; inset:0 }
+body{margin:0;background:black;overflow:hidden}
+canvas{position:absolute;top:0;left:0}
+#hud{position:fixed;top:10px;left:10px;color:white;font:20px sans-serif}
 </style>
 </head>
 
-<body class="select-none">
-
-<!-- Login -->
-<div id="login" class="absolute inset-0 flex items-center justify-center bg-gray-900 z-50">
-  <div class="bg-gray-800 p-6 rounded-xl w-80 space-y-4">
-    <h1 class="text-2xl font-bold text-center text-purple-400">AR English Eat</h1>
-    <input id="name" placeholder="ชื่อ - นามสกุล" class="w-full p-2 rounded bg-gray-700">
-    <input id="number" placeholder="เลขที่" class="w-full p-2 rounded bg-gray-700">
-    <button onclick="start()" class="w-full bg-purple-600 py-2 rounded font-bold">เริ่มเกม</button>
-  </div>
-</div>
-
-<!-- HUD -->
-<div class="absolute top-2 left-2 z-10 bg-black/60 p-3 rounded">
-  <div id="question" class="text-yellow-400 font-bold">Loading...</div>
+<body>
+<div id="hud">
+  <div id="q">Open your mouth!</div>
   <div id="score">Score: 0</div>
 </div>
 
-<video playsinline class="hidden"></video>
-<canvas id="canvas"></canvas>
-
-<!-- End -->
-<div id="end" class="hidden absolute inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
-  <div class="text-4xl text-yellow-400 font-black" id="finalScore">0</div>
-  <button onclick="exportExcel()" class="mt-4 bg-green-600 px-6 py-2 rounded">Export Excel</button>
-  <button onclick="location.reload()" class="mt-2 bg-gray-600 px-6 py-2 rounded">เล่นใหม่</button>
-</div>
+<video playsinline style="display:none"></video>
+<canvas id="c"></canvas>
 
 <script>
-/* ------------------ STATE ------------------ */
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const video = document.querySelector("video");
+const video=document.querySelector("video");
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
 
-let user = {};
-let score = 0;
-let qIndex = 0;
-let items = [];
-let mouth = {x:0,y:0,open:false};
-let playing = false;
-let history = [];
+let score=0;
+let word={x:200,y:100,t:"EAT"};
+let mouthOpen=false;
 
-const questions = [
-  { q:"We ___ students", c:"are", w:["is","am"] },
-  { q:"Past of Eat", c:"ate", w:["eated","eating"] },
-  { q:"Opposite of Expensive", c:"cheap", w:["good","high"] },
-  { q:"Animal with long nose", c:"elephant", w:["lion","tiger"] }
-];
-
-/* ------------------ LOGIN ------------------ */
-function start(){
-  user.name = name.value;
-  user.number = number.value;
-  if(!user.name || !user.number) return alert("กรอกข้อมูล");
-  document.getElementById("login").style.display="none";
-  playing = true;
-  resize();
-  nextQ();
-  camera.start();
+function resize(){
+  c.width=innerWidth;
+  c.height=innerHeight;
 }
+resize(); addEventListener("resize",resize);
 
-/* ------------------ GAME ------------------ */
-function nextQ(){
-  if(qIndex >= questions.length){
-    document.getElementById("end").classList.remove("hidden");
-    document.getElementById("finalScore").innerText = score;
-    return;
-  }
-  document.getElementById("question").innerText = questions[qIndex].q;
-}
-
-function spawn(){
-  if(items.length>2) return;
-  const q = questions[qIndex];
-  const correct = !items.some(i=>i.correct);
-  const text = correct ? q.c : q.w[Math.floor(Math.random()*q.w.length)];
-  items.push({
-    x: Math.random()*canvas.width,
-    y:-40,
-    text,
-    correct,
-    r:40
-  });
-}
-
-function update(){
-  if(!playing) return;
-  if(Math.random()<0.02) spawn();
-
-  items.forEach(i=>i.y+=2);
-
-  items = items.filter(i=>{
-    const d = Math.hypot(i.x-mouth.x,i.y-mouth.y);
-    if(mouth.open && d<60){
-      history.push({q:questions[qIndex].q,a:i.text,c:i.correct});
-      if(i.correct){ score+=10; qIndex++; nextQ(); }
-      else score=Math.max(0,score-5);
-      document.getElementById("score").innerText="Score: "+score;
-      return false;
-    }
-    return i.y<canvas.height+50;
-  });
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();
-  ctx.scale(-1,1);
-  ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
-  ctx.restore();
-
-  items.forEach(i=>{
-    ctx.beginPath();
-    ctx.arc(i.x,i.y,i.r,0,Math.PI*2);
-    ctx.fillStyle="white";
-    ctx.fill();
-    ctx.strokeStyle=i.correct?"purple":"red";
-    ctx.stroke();
-    ctx.fillStyle="black";
-    ctx.textAlign="center";
-    ctx.textBaseline="middle";
-    ctx.font="bold 16px sans-serif";
-    ctx.fillText(i.text,i.x,i.y);
-  });
-}
-
-/* ------------------ EXPORT ------------------ */
-function exportExcel(){
-  const data = [["Name",user.name],["Number",user.number],["Score",score],[],["Q","Answer","Correct"]];
-  history.forEach(h=>data.push([h.q,h.a,h.c?"✔":"✘"]));
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,"Score");
-  XLSX.writeFile(wb,"AR_English_Eat.xlsx");
-}
-
-/* ------------------ FACE ------------------ */
-const face = new FaceMesh({
+const face=new FaceMesh({
   locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
 });
 face.setOptions({maxNumFaces:1});
+
 face.onResults(r=>{
   if(!r.multiFaceLandmarks) return;
-  const lm=r.multiFaceLandmarks[0];
-  const u=lm[13], l=lm[14];
-  mouth.open = Math.hypot(u.x-l.x,u.y-l.y)>0.03;
-  mouth.x = (1-u.x)*canvas.width;
-  mouth.y = u.y*canvas.height;
-  update(); draw();
+  const m=r.multiFaceLandmarks[0];
+  const u=m[13], l=m[14];
+  mouthOpen=Math.hypot(u.x-l.x,u.y-l.y)>0.03;
+
+  draw();
 });
 
-const camera = new Camera(video,{
-  onFrame: async()=>await face.send({image:video}),
+const cam=new Camera(video,{
+  onFrame:async()=>face.send({image:video}),
   width:640,height:480
 });
+cam.start();
 
-/* ------------------ UTIL ------------------ */
-function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
+function draw(){
+  ctx.clearRect(0,0,c.width,c.height);
+  ctx.save();
+  ctx.scale(-1,1);
+  ctx.drawImage(video,-c.width,0,c.width,c.height);
+  ctx.restore();
+
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(word.x,word.y,40,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle="black";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.font="bold 20px sans-serif";
+  ctx.fillText(word.t,word.x,word.y);
+
+  if(mouthOpen){
+    score++;
+    word.x=Math.random()*c.width;
+    word.y=Math.random()*c.height;
+    document.getElementById("score").innerText="Score: "+score;
+  }
 }
-addEventListener("resize",resize);
 </script>
 </body>
 </html>
