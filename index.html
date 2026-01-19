@@ -7,9 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
     <style>
         body { overscroll-behavior: none; background-color: #1a202c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* Canvas ถูก Flip เพื่อให้เหมือนกระจก */
         canvas { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -61,7 +62,7 @@
         <div id="screen-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
             <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
                 <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
-                <p class="text-center text-gray-400 mb-8">M.1 Level Up</p>
+                <p class="text-center text-gray-400 mb-8">M.1 Level Up (Classroom Station)</p>
                 
                 <div class="space-y-4">
                     <div>
@@ -76,15 +77,15 @@
                 </div>
                 
                 <div class="mt-6 text-center">
-                    <button onclick="openAdminPass()" class="text-xs text-gray-500 hover:text-gray-300">Admin Panel</button>
+                    <button onclick="openAdminPass()" class="text-xs text-gray-500 hover:text-gray-300">Admin Panel (Teacher)</button>
                 </div>
             </div>
         </div>
 
         <div id="screen-password" class="hidden absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
             <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-sm border border-gray-700">
-                <h3 class="text-xl font-bold mb-4 text-center">Admin Access</h3>
-                <input id="admin-pass-input" type="password" placeholder="Password" class="w-full bg-gray-700 rounded-lg px-4 py-2 mb-4 text-white">
+                <h3 class="text-xl font-bold mb-4 text-center">Teacher Access</h3>
+                <input id="admin-pass-input" type="password" placeholder="Password (1234)" class="w-full bg-gray-700 rounded-lg px-4 py-2 mb-4 text-white">
                 <p id="pass-error" class="hidden text-red-400 text-sm mb-2 text-center">Incorrect Password</p>
                 <div class="flex gap-2">
                     <button onclick="closePasswordModal()" class="flex-1 bg-gray-600 py-2 rounded-lg">Cancel</button>
@@ -151,25 +152,33 @@
                 </div>
 
                 <div class="space-y-3 w-full max-w-xs">
-                    <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Again</button>
-                    </div>
+                    <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Next Student</button>
+                    <button onclick="openAdminPass()" class="w-full bg-gray-700 text-gray-300 font-bold py-3 rounded-xl shadow hover:bg-gray-600 text-sm">Teacher Panel</button>
+                </div>
             </div>
         </div>
 
         <div id="screen-admin" class="hidden absolute inset-0 z-[70] bg-gray-900 flex flex-col p-4 overflow-hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-purple-400">Admin Panel (Offline)</h2>
-                <button onclick="closeAdminPanel()" class="bg-red-500 px-4 py-2 rounded text-sm">Close</button>
+            <div class="flex justify-between items-center mb-4 bg-gray-800 p-4 rounded-xl shadow-lg">
+                <div>
+                    <h2 class="text-2xl font-bold text-purple-400">Classroom Scoreboard</h2>
+                    <div class="text-xs text-gray-400">Data stored on this device</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold text-sm shadow">Export Excel</button>
+                    <button onclick="clearData()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-bold text-sm shadow">Clear All</button>
+                    <button onclick="closeAdminPanel()" class="bg-gray-600 px-4 py-2 rounded text-sm">Close</button>
+                </div>
             </div>
-            <div class="bg-gray-800 rounded-xl overflow-hidden flex-1 border border-gray-700 relative">
+            <div class="bg-gray-800 rounded-xl overflow-hidden flex-1 border border-gray-700 relative shadow-inner">
                 <div class="overflow-y-auto h-full p-4">
                     <table class="w-full text-left border-collapse">
-                        <thead class="text-gray-400 text-xs uppercase bg-gray-700 sticky top-0">
+                        <thead class="text-gray-400 text-xs uppercase bg-gray-700 sticky top-0 shadow">
                             <tr>
-                                <th class="p-3">Name</th>
                                 <th class="p-3">No.</th>
-                                <th class="p-3">Score</th>
-                                <th class="p-3">Time</th>
+                                <th class="p-3">Name</th>
+                                <th class="p-3 text-right">Score</th>
+                                <th class="p-3 text-right">Time</th>
                             </tr>
                         </thead>
                         <tbody id="admin-table-body" class="text-sm divide-y divide-gray-700">
@@ -191,8 +200,7 @@ const CONFIG = {
     totalQuestions: 5
 };
 
-// --- DATABASE (QUESTIONS - M.1 LEVEL) ---
-// เนื้อหา: Past Tense, Places, Occupations, Antonyms, General Knowledge
+// --- QUESTIONS (M.1) ---
 const QUESTIONS_DB = [
     { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going", "Good"], correct: ["Went"] },
     { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring", "Boat"], correct: ["Bought"] },
@@ -253,8 +261,32 @@ let gameState = {
     frameCount: 0,
     currentQuestion: null,
     user: { name: "", number: "" },
-    history: []
+    history: [] // Will load from localStorage
 };
+
+// --- LOCAL STORAGE MANAGER ---
+function loadHistory() {
+    const stored = localStorage.getItem('ar_english_scores');
+    if (stored) {
+        gameState.history = JSON.parse(stored);
+    }
+}
+
+function saveHistory(record) {
+    gameState.history.push(record);
+    localStorage.setItem('ar_english_scores', JSON.stringify(gameState.history));
+}
+
+function clearData() {
+    if(confirm("Are you sure you want to clear ALL student data?")) {
+        gameState.history = [];
+        localStorage.removeItem('ar_english_scores');
+        openAdminPanel(); // Refresh table
+    }
+}
+
+// Initialize on load
+loadHistory();
 
 // --- INITIALIZATION ---
 function initCheatSheet() {
@@ -323,17 +355,11 @@ function startGame() {
     loadQuestion();
     requestAnimationFrame(gameLoop);
     
-    // Auto-close tutorial button setup
     document.getElementById('tutorial-btn').onclick = () => {
         ELEMENTS.screens.tutorial.classList.add('hidden');
-        startGame(); // Re-trigger ensures cleanness if called from end screen
+        // Resume not needed as gameLoop checks isPlaying
     };
 }
-// Fix circular logic in tutorial button (simply hide tutorial)
-document.getElementById('tutorial-btn').onclick = () => {
-    ELEMENTS.screens.tutorial.classList.add('hidden');
-    // Game loop is already requested in startGame, just ensure HUD is visible
-};
 
 function loadQuestion() {
     if (gameState.qIndex >= CONFIG.totalQuestions || gameState.qIndex >= QUESTIONS_DB.length) {
@@ -349,8 +375,12 @@ function loadQuestion() {
 }
 
 function restartGame() {
+    // Reset User Inputs for next student
+    ELEMENTS.inputs.name.value = "";
+    ELEMENTS.inputs.number.value = "";
+    
     ELEMENTS.screens.end.classList.add('hidden');
-    startGame();
+    ELEMENTS.screens.login.classList.remove('hidden'); // Back to login
 }
 
 // --- LOGIC: GAME LOOP ---
@@ -361,8 +391,6 @@ function onResults(results) {
 
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
-        
-        // Mouth (Upper: 13, Lower: 14)
         const upper = landmarks[13];
         const lower = landmarks[14];
         
@@ -404,7 +432,7 @@ function gameLoop() {
 
         ctx.save();
         ctx.translate(item.x, item.y);
-        ctx.scale(-1, 1); // Flip text back
+        ctx.scale(-1, 1); 
         
         ctx.font = "bold 24px sans-serif";
         ctx.fillStyle = "white";
@@ -429,7 +457,6 @@ function gameLoop() {
             gameState.items.splice(i, 1);
         }
     }
-    
     ctx.restore();
     requestAnimationFrame(gameLoop);
 }
@@ -458,9 +485,7 @@ function handleEat(item) {
         gameState.score += 10;
         showToast("Correct! +10", "green");
         gameState.isPlaying = false;
-        setTimeout(() => {
-             startSpeechRound(item.text);
-        }, 500);
+        setTimeout(() => { startSpeechRound(item.text); }, 500);
     } else {
         gameState.score = Math.max(0, gameState.score - 5);
         showToast("Wrong! -5");
@@ -472,7 +497,6 @@ function handleEat(item) {
 function startSpeechRound(word) {
     ELEMENTS.screens.speech.classList.remove('hidden');
     ELEMENTS.ui.hud.classList.add('hidden');
-    
     ELEMENTS.ui.speechTarget.innerText = word;
     ELEMENTS.ui.speechPhonetic.innerText = "Speak now...";
     ELEMENTS.ui.speechStatus.innerText = "Click microphone";
@@ -492,7 +516,6 @@ function startSpeechRecognition() {
 
     ELEMENTS.ui.speechStatus.innerText = "Listening...";
     ELEMENTS.ui.speechStatus.className = "h-8 text-sm text-red-400 animate-pulse mb-4";
-
     recognition.start();
 
     recognition.onresult = (event) => {
@@ -520,7 +543,6 @@ function startSpeechRecognition() {
 function skipSpeech() {
     ELEMENTS.screens.speech.classList.add('hidden');
     ELEMENTS.ui.hud.classList.remove('hidden');
-    
     gameState.qIndex++;
     gameState.isPlaying = true;
     loadQuestion();
@@ -560,15 +582,20 @@ function openAdminPanel() {
     ELEMENTS.screens.admin.classList.remove('hidden');
     const tbody = document.getElementById('admin-table-body');
     
+    // Refresh data from storage
+    loadHistory();
+    
     if (gameState.history.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No data in this session.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No student data yet.</td></tr>';
     } else {
-        tbody.innerHTML = gameState.history.map(h => `
-            <tr class="hover:bg-gray-700">
-                <td class="p-3">${h.name}</td>
+        // Sort by latest time
+        const sorted = [...gameState.history].reverse();
+        tbody.innerHTML = sorted.map(h => `
+            <tr class="hover:bg-gray-700 border-b border-gray-700">
                 <td class="p-3 text-gray-400">#${h.number}</td>
-                <td class="p-3 text-green-400 font-bold">${h.score}</td>
-                <td class="p-3 text-xs text-gray-500">${h.time}</td>
+                <td class="p-3 font-semibold text-white">${h.name}</td>
+                <td class="p-3 text-right text-green-400 font-bold text-lg">${h.score}</td>
+                <td class="p-3 text-right text-xs text-gray-500">${h.time}</td>
             </tr>
         `).join('');
     }
@@ -581,13 +608,23 @@ function gameOver() {
     ELEMENTS.screens.end.classList.remove('hidden');
     ELEMENTS.ui.finalScore.innerText = gameState.score;
     
+    // Save to LocalStorage immediately
     const record = {
         name: gameState.user.name,
         number: gameState.user.number,
         score: gameState.score,
-        time: new Date().toLocaleTimeString()
+        time: new Date().toLocaleTimeString('th-TH')
     };
-    gameState.history.push(record);
+    saveHistory(record);
+}
+
+function exportToExcel() {
+    if(gameState.history.length === 0) { showToast("No data to export"); return; }
+    
+    const ws = XLSX.utils.json_to_sheet(gameState.history);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ClassScores");
+    XLSX.writeFile(wb, "AR_English_M1_Scores.xlsx");
 }
 
 function resize() {
