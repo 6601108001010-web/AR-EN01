@@ -9,15 +9,42 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <style>
-body{margin:0;background:black;overflow:hidden}
+body{margin:0;background:black;overflow:hidden;font-family:sans-serif}
 canvas{position:absolute;top:0;left:0}
-#hud{position:fixed;top:10px;left:10px;color:white;font:20px sans-serif}
+#hud{position:fixed;top:10px;left:10px;color:white;font-size:18px}
+#login{
+  position:fixed;inset:0;
+  background:#000c;
+  display:flex;align-items:center;justify-content:center;
+  z-index:10
+}
+#box{
+  background:#111;padding:20px;border-radius:10px;
+  width:260px;color:white
+}
+input,button{
+  width:100%;padding:8px;margin-top:8px;
+  border-radius:6px;border:none;font-size:16px
+}
+button{background:#7c3aed;color:white;font-weight:bold}
 </style>
 </head>
 
 <body>
-<div id="hud">
-  <div id="q">Open your mouth!</div>
+
+<!-- LOGIN -->
+<div id="login">
+  <div id="box">
+    <h2 style="text-align:center;color:#a78bfa">AR English Eat</h2>
+    <input id="name" placeholder="ชื่อ - นามสกุล">
+    <input id="number" placeholder="เลขที่">
+    <button onclick="start()">เริ่มเกม</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div id="user"></div>
   <div id="score">Score: 0</div>
 </div>
 
@@ -25,31 +52,55 @@ canvas{position:absolute;top:0;left:0}
 <canvas id="c"></canvas>
 
 <script>
+/* ---------- STATE ---------- */
 const video=document.querySelector("video");
 const c=document.getElementById("c");
 const ctx=c.getContext("2d");
 
 let score=0;
-let word={x:200,y:100,t:"EAT"};
 let mouthOpen=false;
+let playing=false;
+let player={name:"",number:""};
 
+let word={x:200,y:100,t:"EAT"};
+
+/* ---------- LOGIN ---------- */
+function start(){
+  const n=name.value.trim();
+  const no=number.value.trim();
+  if(!n||!no) return alert("กรอกชื่อและเลขที่");
+
+  player.name=n;
+  player.number=no;
+
+  document.getElementById("login").style.display="none";
+  document.getElementById("hud").style.display="block";
+  document.getElementById("user").innerText=
+    `👤 ${player.name} (${player.number})`;
+
+  playing=true;
+  resize();
+  cam.start();
+}
+
+/* ---------- CANVAS ---------- */
 function resize(){
   c.width=innerWidth;
   c.height=innerHeight;
 }
 resize(); addEventListener("resize",resize);
 
+/* ---------- FACE ---------- */
 const face=new FaceMesh({
   locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
 });
 face.setOptions({maxNumFaces:1});
 
 face.onResults(r=>{
-  if(!r.multiFaceLandmarks) return;
+  if(!playing||!r.multiFaceLandmarks) return;
   const m=r.multiFaceLandmarks[0];
   const u=m[13], l=m[14];
   mouthOpen=Math.hypot(u.x-l.x,u.y-l.y)>0.03;
-
   draw();
 });
 
@@ -57,10 +108,11 @@ const cam=new Camera(video,{
   onFrame:async()=>face.send({image:video}),
   width:640,height:480
 });
-cam.start();
 
+/* ---------- GAME ---------- */
 function draw(){
   ctx.clearRect(0,0,c.width,c.height);
+
   ctx.save();
   ctx.scale(-1,1);
   ctx.drawImage(video,-c.width,0,c.width,c.height);
@@ -70,6 +122,7 @@ function draw(){
   ctx.beginPath();
   ctx.arc(word.x,word.y,40,0,Math.PI*2);
   ctx.fill();
+
   ctx.fillStyle="black";
   ctx.textAlign="center";
   ctx.textBaseline="middle";
