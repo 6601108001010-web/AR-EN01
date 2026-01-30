@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR English Eat - M.1 (Mobile Fix)</title>
+    <title>AR English Eat - M.1 (Thai Phonetic)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
@@ -18,19 +18,13 @@
             border-top: 4px solid #a855f7; width: 40px; height: 40px;
             animation: spin 1s linear infinite;
         }
-        .scroll-content::-webkit-scrollbar { width: 8px; }
-        .scroll-content::-webkit-scrollbar-track { background: #2d3748; border-radius: 4px; }
-        .scroll-content::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
         
         .floating { animation: float 3s ease-in-out infinite; }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
         
         .hidden { display: none !important; }
         
-        #input-video {
-            position: absolute;
-            top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none;
-        }
+        #input-video { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
         .pulse-red { animation: pulse-red 1.5s infinite; }
         @keyframes pulse-red {
@@ -47,292 +41,141 @@
         <canvas id="output-canvas" class="absolute inset-0 w-full h-full"></canvas>
 
         <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between z-10 p-4">
-            <div id="hud" class="hidden bg-black/60 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10 transition-opacity duration-300 pointer-events-auto">
+            <div id="hud" class="hidden bg-black/60 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10 pointer-events-auto">
                 <div id="user-info-display" class="text-xs text-gray-400 mb-1 flex justify-between px-2">
                     <span id="display-name">Guest</span>
                     <span id="display-number">#00</span>
                 </div>
                 <div class="flex justify-center items-center gap-3 mb-2">
-                    <div id="question-text" class="text-yellow-400 text-xl md:text-2xl font-bold drop-shadow-md">Loading...</div>
-                    <button onclick="speakQuestion()" class="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition shadow-lg active:scale-90" title="Listen">🔊</button>
+                    <div id="question-text" class="text-yellow-400 text-xl font-bold">Loading...</div>
+                    <button onclick="speakQuestion()" class="bg-white/20 rounded-full p-2 w-10 h-10 flex items-center justify-center">🔊</button>
                 </div>
-                <div class="flex justify-between items-center text-sm md:text-base text-gray-200 px-4">
+                <div class="flex justify-between items-center text-sm text-gray-200 px-4">
                     <span id="score-text" class="text-green-400 font-bold">Score: 0</span>
-                    <span id="status-text" class="text-xs text-gray-400">Open mouth to eat! 😲</span>
+                    <span id="status-text" class="text-xs">Open mouth to eat! 😲</span>
                 </div>
             </div>
-            <div id="toast" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-lg z-[80]">Error</div>
+            <div id="toast" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-lg z-[80]">Error</div>
         </div>
 
         <div id="screen-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
-            <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
+            <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl border border-gray-700">
                 <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
-                <p class="text-center text-gray-400 mb-8">M.1 Level Up (Mobile Optimized)</p>
+                <p class="text-center text-gray-400 mb-8">Level: M.1</p>
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Nickname (English)</label>
-                        <input id="input-name" type="text" placeholder="e.g. Somchai" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Class Number</label>
-                        <input id="input-number" type="tel" placeholder="e.g. 15" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition">
-                    </div>
-                    <button onclick="submitLogin()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95">START GAME</button>
-                </div>
-                <div class="mt-6 text-center">
-                    <button onclick="openAdminPass()" class="text-xs text-gray-500 hover:text-gray-300">Admin Panel (Teacher)</button>
+                    <input id="input-name" type="text" placeholder="Nickname (ชื่อเล่น)" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none">
+                    <input id="input-number" type="tel" placeholder="Class Number (เลขที่)" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none">
+                    <button onclick="submitLogin()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 rounded-xl shadow-lg">START GAME</button>
                 </div>
             </div>
         </div>
 
-        <div id="screen-password" class="hidden absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
-            <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-sm border border-gray-700">
-                <h3 class="text-xl font-bold mb-4 text-center">Teacher Access</h3>
-                <input id="admin-pass-input" type="password" placeholder="Password (1234)" class="w-full bg-gray-700 rounded-lg px-4 py-2 mb-4 text-white">
-                <div class="flex gap-2">
-                    <button onclick="closePasswordModal()" class="flex-1 bg-gray-600 py-2 rounded-lg">Cancel</button>
-                    <button onclick="checkAdminPassword()" class="flex-1 bg-purple-600 py-2 rounded-lg">Enter</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="screen-load" class="hidden absolute inset-0 z-40 bg-gray-900 flex flex-col items-center justify-center">
-            <div class="loader mb-4"></div>
-            <p id="loading-text" class="text-gray-400 animate-pulse text-center px-4">Requesting Camera...</p>
-        </div>
-
-        <div id="screen-tutorial" class="hidden absolute inset-0 z-45 bg-black/90 flex flex-col items-center justify-center p-6 text-center">
-            <div class="floating text-6xl mb-4">😲</div>
-            <h2 class="text-3xl font-bold text-yellow-400 mb-4">How to Play</h2>
-            <ul class="text-left space-y-3 text-gray-300 mb-8 max-w-sm mx-auto text-sm">
-                <li>1. Read the question above.</li>
-                <li>2. Find the falling correct word.</li>
-                <li>3. <b>Open your mouth</b> to eat it!</li>
-                <li>4. <b>Speak the word</b> for bonus points!</li>
-            </ul>
-            <button id="tutorial-btn" class="px-8 py-3 bg-purple-600 rounded-full font-bold shadow-lg">I'm Ready!</button>
-        </div>
-
-        <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6">
-            <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30 shadow-2xl">
+        <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6">
+            <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30">
                 <h2 class="text-2xl font-bold text-white mb-2">Bonus Round! 🎤</h2>
-                <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-1 mt-4 uppercase">TARGET</div>
-                <div id="speech-hint" class="text-sm text-gray-400 mb-4 italic italic">/ pronunciation /</div>
+                <div id="speech-target-word" class="text-5xl font-bold text-yellow-400 mb-1 uppercase tracking-wider">TARGET</div>
                 
-                <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">Tap mic & say the word</div>
+                <div class="mb-6 space-y-1">
+                    <div id="speech-hint-th" class="text-2xl text-green-400 font-bold">คำอ่านภาษาไทย</div>
+                    <div id="speech-hint-en" class="text-sm text-gray-400 italic">/ pronunciation /</div>
+                </div>
                 
-                <button id="mic-button" onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-6">🎙️</button>
+                <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">กดปุ่มไมค์แล้วพูด</div>
+                
+                <button id="mic-button" onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl shadow-lg mx-auto mb-6">🎙️</button>
                 
                 <div class="flex gap-4 justify-center">
-                    <button onclick="speakQuestion(document.getElementById('speech-target-word').innerText)" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-gray-200 text-sm flex items-center gap-2 transition">
-                        <span>🔊 Listen</span>
+                    <button onclick="speakQuestion(document.getElementById('speech-target-word').innerText)" class="bg-gray-700 px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+                        <span>🔊 ฟังเสียง</span>
                     </button>
-                    <button onclick="skipSpeech()" class="bg-transparent border border-gray-600 px-4 py-2 rounded-xl text-gray-400 text-sm hover:text-white transition">Skip</button>
+                    <button onclick="skipSpeech()" class="text-gray-500 text-xs underline">ข้าม (Skip)</button>
                 </div>
             </div>
         </div>
 
-        <div id="screen-end" class="hidden absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
-            <div class="text-center">
-                <div class="text-6xl mb-4">🏆</div>
-                <h2 class="text-4xl font-bold text-white mb-2">Game Over!</h2>
-                <div class="text-gray-400 mb-6"><span id="end-name" class="font-bold text-purple-400">Guest</span> (#<span id="end-number">00</span>)</div>
-                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 min-w-[280px] mb-8">
-                    <div class="text-gray-500 text-sm uppercase tracking-wider mb-1">Total Score</div>
-                    <div id="final-score" class="text-5xl font-bold text-green-400">0</div>
-                </div>
-                <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Next Student</button>
-            </div>
-        </div>
-
-        <div id="screen-admin" class="hidden absolute inset-0 z-[70] bg-gray-900 flex flex-col p-4 overflow-hidden">
-            <div class="flex justify-between items-center mb-4 bg-gray-800 p-4 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-bold text-purple-400">Scoreboard</h2>
-                <div class="flex gap-2">
-                    <button onclick="exportToExcel()" class="bg-green-600 px-4 py-2 rounded font-bold text-sm">Export</button>
-                    <button onclick="clearData()" class="bg-red-600 px-4 py-2 rounded font-bold text-sm">Clear</button>
-                    <button onclick="closeAdminPanel()" class="bg-gray-600 px-4 py-2 rounded text-sm">Close</button>
-                </div>
-            </div>
-            <div class="bg-gray-800 rounded-xl overflow-hidden flex-1 border border-gray-700 relative shadow-inner">
-                <div class="overflow-y-auto h-full p-4">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="text-gray-400 text-xs uppercase bg-gray-700 sticky top-0 shadow">
-                            <tr><th class="p-3">No.</th><th class="p-3">Name</th><th class="p-3 text-right">Score</th></tr>
-                        </thead>
-                        <tbody id="admin-table-body" class="text-sm divide-y divide-gray-700"></tbody>
-                    </table>
-                </div>
-            </div>
+        <div id="screen-load" class="hidden absolute inset-0 z-40 bg-gray-900 flex flex-col items-center justify-center"><div class="loader mb-4"></div><p id="loading-text">Loading...</p></div>
+        <div id="screen-end" class="hidden absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+            <h2 class="text-4xl font-bold mb-4">จบเกม! (Game Over)</h2>
+            <div class="text-5xl font-bold text-green-400 mb-8" id="final-score">0</div>
+            <button onclick="location.reload()" class="bg-white text-black px-8 py-3 rounded-xl font-bold">เล่นอีกครั้ง</button>
         </div>
     </div>
 
 <script>
-// --- CONFIG & DB ---
-const CONFIG = {
-    mouthThreshold: 0.05,
-    eatDistance: 60,
-    gravity: 2.2,
-    spawnRate: 110,
-    totalQuestions: 5
-};
+const CONFIG = { mouthThreshold: 0.05, eatDistance: 60, gravity: 2.2, spawnRate: 110, totalQuestions: 5 };
 
+// Database with Thai Phonetics
 const QUESTIONS_DB = [
-    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going"], correct: ["Went"] },
-    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring"], correct: ["Bought"] },
-    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Hard", "Small"], correct: ["Cheap"] },
-    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo", "Park"], correct: ["Library"] },
-    { q: "Who works in a hospital?", list: ["Doctor", "Teacher", "Pilot", "Chef"], correct: ["Doctor"] },
-    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo", "Phuket"], correct: ["Bangkok"] },
-    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard", "Big"], correct: ["Safe"] },
-    { q: "Subject about numbers?", list: ["Math", "Art", "Music", "Thai"], correct: ["Math"] },
-    { q: "What is H2O?", list: ["Water", "Fire", "Air", "Earth"], correct: ["Water"] }
+    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes"], correct: ["Went"] },
+    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Bring"], correct: ["Bought"] },
+    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Small"], correct: ["Cheap"] },
+    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo"], correct: ["Library"] },
+    { q: "Who works in a hospital?", list: ["Doctor", "Pilot", "Chef"], correct: ["Doctor"] },
+    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo"], correct: ["Bangkok"] },
+    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard"], correct: ["Safe"] },
+    { q: "Subject about numbers?", list: ["Math", "Art", "Thai"], correct: ["Math"] },
+    { q: "What is H2O?", list: ["Water", "Fire", "Air"], correct: ["Water"] }
 ];
 
+// เพิ่มคำอ่านภาษาไทยและภาษาอังกฤษที่นี่
 const PHONETIC_MAP = {
-    "Went": "wen-t", "Bought": "bau-t", "Cheap": "cheep", "Library": "lie-brer-ee",
-    "Doctor": "dok-ter", "Bangkok": "bang-kok", "Year": "yeer", "Safe": "sayf",
-    "Math": "math", "Water": "wah-ter"
+    "Went": { th: "เวนท์", en: "/went/" },
+    "Bought": { th: "บอท", en: "/bɔːt/" },
+    "Cheap": { th: "ชีพ", en: "/tʃiːp/" },
+    "Library": { th: "ไล-เบร-รี", en: "/ˈlaɪbreri/" },
+    "Doctor": { th: "ดอค-เทอร์", en: "/ˈdɒktə(r)/" },
+    "Bangkok": { th: "แบง-ค็อก", en: "/ˈbæŋkɒk/" },
+    "Safe": { th: "เซฟ", en: "/seɪf/" },
+    "Math": { th: "แมธ", en: "/mæθ/" },
+    "Water": { th: "วอ-เทอร์", en: "/ˈwɔːtə(r)/" }
 };
 
-// --- STATE ---
-let faceMesh;
+let faceMesh, ctx, gameState = { isPlaying: false, score: 0, qIndex: 0, items: [], mouthPos: {x:0, y:0}, isMouthOpen: false, frameCount: 0, currentQuestion: null, user: {name:"", number:""}, cameraActive: false };
+
 const ELEMENTS = {
     video: document.getElementById('input-video'),
     canvas: document.getElementById('output-canvas'),
-    screens: {
-        login: document.getElementById('screen-login'),
-        password: document.getElementById('screen-password'),
-        load: document.getElementById('screen-load'),
-        end: document.getElementById('screen-end'),
-        speech: document.getElementById('screen-speech'),
-        tutorial: document.getElementById('screen-tutorial'),
-        admin: document.getElementById('screen-admin')
-    },
-    ui: {
-        hud: document.getElementById('hud'),
-        question: document.getElementById('question-text'),
-        score: document.getElementById('score-text'),
-        finalScore: document.getElementById('final-score'),
-        toast: document.getElementById('toast'),
-        speechTarget: document.getElementById('speech-target-word'),
-        speechStatus: document.getElementById('speech-status')
-    },
-    inputs: {
-        name: document.getElementById('input-name'),
-        number: document.getElementById('input-number'),
-        adminPass: document.getElementById('admin-pass-input')
-    }
+    screens: { login: document.getElementById('screen-login'), load: document.getElementById('screen-load'), end: document.getElementById('screen-end'), speech: document.getElementById('screen-speech') },
+    ui: { hud: document.getElementById('hud'), question: document.getElementById('question-text'), score: document.getElementById('score-text'), finalScore: document.getElementById('final-score'), toast: document.getElementById('toast'), speechTarget: document.getElementById('speech-target-word'), speechStatus: document.getElementById('speech-status') }
 };
 
-const ctx = ELEMENTS.canvas.getContext('2d');
-let gameState = {
-    isPlaying: false,
-    score: 0,
-    qIndex: 0,
-    items: [],
-    mouthPos: { x: 0, y: 0 },
-    isMouthOpen: false,
-    frameCount: 0,
-    currentQuestion: null,
-    user: { name: "", number: "" },
-    history: [],
-    cameraActive: false
-};
+ctx = ELEMENTS.canvas.getContext('2d');
 
-// --- CORE FUNCTIONS ---
-function loadHistory() {
-    const stored = localStorage.getItem('ar_english_scores_v2');
-    if (stored) gameState.history = JSON.parse(stored);
-}
-function saveHistory(record) {
-    gameState.history.push(record);
-    localStorage.setItem('ar_english_scores_v2', JSON.stringify(gameState.history));
-}
-
-async function initFaceMesh() {
-    faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-    faceMesh.onResults(onResults);
-    await faceMesh.initialize();
-}
-
+// --- Functions ---
 async function startCamera() {
-    try {
-        ELEMENTS.screens.login.classList.add('hidden');
-        ELEMENTS.screens.load.classList.remove('hidden');
-        if (!faceMesh) await initFaceMesh();
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-        ELEMENTS.video.srcObject = stream;
-        
-        return new Promise((resolve) => {
-            ELEMENTS.video.onloadedmetadata = () => {
-                ELEMENTS.video.play();
-                gameState.cameraActive = true;
-                predictLoop();
-                ELEMENTS.screens.load.classList.add('hidden');
-                ELEMENTS.screens.tutorial.classList.remove('hidden');
-                resolve();
-            };
-        });
-    } catch (e) {
-        alert("Camera Error: " + e.message);
-        ELEMENTS.screens.login.classList.remove('hidden');
-    }
+    ELEMENTS.screens.login.classList.add('hidden');
+    ELEMENTS.screens.load.classList.remove('hidden');
+    faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false });
+    faceMesh.onResults(onResults);
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    ELEMENTS.video.srcObject = stream;
+    ELEMENTS.video.play();
+    gameState.cameraActive = true;
+    predictLoop();
+    ELEMENTS.screens.load.classList.add('hidden');
+    startGame();
 }
 
-async function predictLoop() {
-    if (gameState.cameraActive) {
-        await faceMesh.send({ image: ELEMENTS.video });
-        requestAnimationFrame(predictLoop);
-    }
-}
+async function predictLoop() { if (gameState.cameraActive) { await faceMesh.send({ image: ELEMENTS.video }); requestAnimationFrame(predictLoop); } }
 
 function onResults(results) {
     ctx.save();
     ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
     ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+    if (results.multiFaceLandmarks?.[0]) {
         const landmarks = results.multiFaceLandmarks[0];
-        const upper = landmarks[13];
-        const lower = landmarks[14];
-        const x = upper.x * ELEMENTS.canvas.width;
-        const y = (upper.y + lower.y) / 2 * ELEMENTS.canvas.height;
+        const x = landmarks[13].x * ELEMENTS.canvas.width;
+        const y = (landmarks[13].y + landmarks[14].y) / 2 * ELEMENTS.canvas.height;
         gameState.mouthPos = { x, y };
-        gameState.isMouthOpen = Math.abs(upper.y - lower.y) > CONFIG.mouthThreshold;
-
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
-        ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        gameState.isMouthOpen = Math.abs(landmarks[13].y - landmarks[14].y) > CONFIG.mouthThreshold;
+        ctx.beginPath(); ctx.arc(x, y, 15, 0, 2*Math.PI); ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000"; ctx.stroke();
     }
     ctx.restore();
 }
 
-// --- GAMEPLAY ---
-function submitLogin() {
-    const name = ELEMENTS.inputs.name.value.trim();
-    const num = ELEMENTS.inputs.number.value.trim();
-    if (!name || !num) return showToast("Enter Name & Number");
-    gameState.user = { name, number: num };
-    document.getElementById('display-name').innerText = name;
-    document.getElementById('display-number').innerText = `#${num}`;
-    startCamera();
-}
-
-document.getElementById('tutorial-btn').onclick = () => {
-    ELEMENTS.screens.tutorial.classList.add('hidden');
-    startGame();
-};
-
 function startGame() {
-    gameState.score = 0;
-    gameState.qIndex = 0;
-    gameState.isPlaying = true;
-    gameState.items = [];
+    gameState.score = 0; gameState.qIndex = 0; gameState.isPlaying = true;
     QUESTIONS_DB.sort(() => Math.random() - 0.5);
     ELEMENTS.ui.hud.classList.remove('hidden');
     loadQuestion();
@@ -344,183 +187,84 @@ function loadQuestion() {
     gameState.currentQuestion = QUESTIONS_DB[gameState.qIndex];
     ELEMENTS.ui.question.innerText = gameState.currentQuestion.q;
     ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    gameState.items = [];
     speakQuestion();
 }
 
 function gameLoop() {
     if (!gameState.isPlaying) return;
     gameState.frameCount++;
-    if (gameState.frameCount % CONFIG.spawnRate === 0) spawnItem();
-
+    if (gameState.frameCount % CONFIG.spawnRate === 0) {
+        const isCorrect = Math.random() < 0.4;
+        const text = isCorrect ? gameState.currentQuestion.correct[0] : gameState.currentQuestion.list[Math.floor(Math.random()*gameState.currentQuestion.list.length)];
+        gameState.items.push({ x: 50 + Math.random() * (ELEMENTS.canvas.width - 100), y: -20, text, isCorrect });
+    }
     for (let i = gameState.items.length - 1; i >= 0; i--) {
-        let item = gameState.items[i];
-        item.y += CONFIG.gravity;
-
-        ctx.save();
-        ctx.translate(item.x, item.y);
-        ctx.scale(-1, 1);
-        ctx.font = "bold 24px sans-serif";
-        ctx.fillStyle = "white";
-        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
-        ctx.textAlign = "center";
-        ctx.fillText(item.text, 0, 0);
-        ctx.restore();
-
-        if (gameState.isMouthOpen) {
-            const dist = Math.sqrt((gameState.mouthPos.x - item.x)**2 + (gameState.mouthPos.y - item.y)**2);
-            if (dist < CONFIG.eatDistance) {
-                handleEat(item);
-                gameState.items.splice(i, 1);
-                continue;
-            }
-        }
-        if (item.y > ELEMENTS.canvas.height) gameState.items.splice(i, 1);
+        let item = gameState.items[i]; item.y += CONFIG.gravity;
+        ctx.save(); ctx.translate(item.x, item.y); ctx.scale(-1, 1); ctx.font = "bold 24px sans-serif"; ctx.fillStyle = "white"; ctx.fillText(item.text, 0, 0); ctx.restore();
+        if (gameState.isMouthOpen && Math.sqrt((gameState.mouthPos.x - item.x)**2 + (gameState.mouthPos.y - item.y)**2) < CONFIG.eatDistance) {
+            if (item.isCorrect) { gameState.score += 10; gameState.isPlaying = false; setTimeout(() => startSpeechRound(item.text), 600); }
+            else { gameState.score = Math.max(0, gameState.score - 5); showToast("ผิด! -5"); }
+            gameState.items.splice(i, 1);
+        } else if (item.y > ELEMENTS.canvas.height) gameState.items.splice(i, 1);
     }
     requestAnimationFrame(gameLoop);
 }
 
-function spawnItem() {
-    const x = 50 + Math.random() * (ELEMENTS.canvas.width - 100);
-    const isCorrect = Math.random() < 0.4;
-    const text = isCorrect ? gameState.currentQuestion.correct[0] : 
-                 gameState.currentQuestion.list.filter(w => !gameState.currentQuestion.correct.includes(w))[Math.floor(Math.random() * 3)];
-    gameState.items.push({ x, y: -20, text, isCorrect });
-}
-
-function handleEat(item) {
-    if (item.isCorrect) {
-        gameState.score += 10;
-        showToast("Yummy! +10", "green");
-        gameState.isPlaying = false;
-        setTimeout(() => startSpeechRound(item.text), 600);
-    } else {
-        gameState.score = Math.max(0, gameState.score - 5);
-        showToast("Wrong! -5");
-        ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    }
-}
-
-// --- SPEECH LOGIC (MULTI-TRY & HINT) ---
 function startSpeechRound(word) {
     ELEMENTS.screens.speech.classList.remove('hidden');
     ELEMENTS.ui.hud.classList.add('hidden');
     ELEMENTS.ui.speechTarget.innerText = word;
     
-    const hint = PHONETIC_MAP[word] || "";
-    document.getElementById('speech-hint').innerText = hint ? `Try: ${hint}` : "";
-    ELEMENTS.ui.speechStatus.innerText = "Tap mic to speak";
+    // แสดงคำอ่านไทยและอังกฤษ
+    const phonetic = PHONETIC_MAP[word] || { th: "อ่านตามคำข้างบน", en: "" };
+    document.getElementById('speech-hint-th').innerText = phonetic.th;
+    document.getElementById('speech-hint-en').innerText = phonetic.en;
     
-    const micBtn = document.getElementById('mic-button');
-    micBtn.className = "w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-6";
+    ELEMENTS.ui.speechStatus.innerText = "กดปุ่มไมค์แล้วพูด";
+    document.getElementById('mic-button').className = "w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl shadow-lg mx-auto mb-6";
 }
 
 function startSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return (alert("Speech not supported"), skipSpeech());
-
+    if (!SpeechRecognition) return skipSpeech();
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     const micBtn = document.getElementById('mic-button');
     
-    recognition.onstart = () => {
-        micBtn.classList.add('pulse-red', 'bg-red-500');
-        ELEMENTS.ui.speechStatus.innerText = "Listening...";
-    };
-
+    recognition.onstart = () => { micBtn.classList.add('pulse-red', 'bg-red-500'); ELEMENTS.ui.speechStatus.innerText = "กำลังฟัง..."; };
     recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase().trim();
-        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase().trim();
-        
-        if (transcript === target || transcript.includes(target)) {
-            micBtn.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg";
-            showToast("Excellent! +20", "green");
-            gameState.score += 20;
-            ELEMENTS.ui.speechStatus.innerText = `Heard: "${transcript}" ✅`;
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase();
+        if (transcript.includes(target)) {
+            micBtn.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6";
+            gameState.score += 20; showToast("เก่งมาก! +20", "green");
             setTimeout(skipSpeech, 1500);
         } else {
-            ELEMENTS.ui.speechStatus.innerText = `Heard "${transcript}"? Try again!`;
-            micBtn.classList.remove('pulse-red', 'bg-red-500');
-            micBtn.classList.add('bg-purple-600');
+            ELEMENTS.ui.speechStatus.innerText = `ได้ยินว่า "${transcript}" ลองใหม่นะ!`;
+            micBtn.classList.remove('pulse-red', 'bg-red-500'); micBtn.classList.add('bg-purple-600');
         }
     };
-
-    recognition.onerror = () => {
-        micBtn.classList.remove('pulse-red', 'bg-red-500');
-        ELEMENTS.ui.speechStatus.innerText = "Try again...";
-    };
-    
-    recognition.onend = () => micBtn.classList.remove('pulse-red');
+    recognition.onerror = () => { micBtn.classList.remove('pulse-red'); ELEMENTS.ui.speechStatus.innerText = "ลองอีกครั้ง..."; };
     recognition.start();
 }
 
-function skipSpeech() {
-    ELEMENTS.screens.speech.classList.add('hidden');
-    ELEMENTS.ui.hud.classList.remove('hidden');
-    gameState.qIndex++;
-    gameState.isPlaying = true;
-    loadQuestion();
-    gameLoop();
+function skipSpeech() { ELEMENTS.screens.speech.classList.add('hidden'); ELEMENTS.ui.hud.classList.remove('hidden'); gameState.qIndex++; gameState.isPlaying = true; loadQuestion(); gameLoop(); }
+
+function speakQuestion(text) {
+    const t = text || gameState.currentQuestion?.q;
+    if (t) { const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.8; speechSynthesis.speak(u); }
 }
 
-function speakQuestion(customText) {
-    const text = customText || (gameState.currentQuestion ? gameState.currentQuestion.q : "");
-    if (!text) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US'; u.rate = 0.85;
-    speechSynthesis.speak(u);
-}
-
-// --- UTILS ---
 function showToast(msg, color="red") {
-    const t = ELEMENTS.ui.toast;
-    t.innerText = msg;
-    t.className = `absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full shadow-lg z-[90] ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white animate-bounce`;
-    t.classList.remove('hidden');
-    setTimeout(() => t.classList.add('hidden'), 1800);
+    const t = ELEMENTS.ui.toast; t.innerText = msg; t.className = `absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white z-[90]`;
+    t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 1500);
 }
 
-function gameOver() {
-    gameState.isPlaying = false;
-    ELEMENTS.ui.hud.classList.add('hidden');
-    ELEMENTS.screens.end.classList.remove('hidden');
-    ELEMENTS.ui.finalScore.innerText = gameState.score;
-    saveHistory({ name: gameState.user.name, number: gameState.user.number, score: gameState.score, date: new Date().toLocaleString() });
-}
+function gameOver() { gameState.isPlaying = false; ELEMENTS.ui.hud.classList.add('hidden'); ELEMENTS.screens.end.classList.remove('hidden'); ELEMENTS.ui.finalScore.innerText = gameState.score; }
+function submitLogin() { if (document.getElementById('input-name').value) startCamera(); }
 
-function restartGame() {
-    location.reload();
-}
-
-// --- ADMIN PANEL ---
-function openAdminPass() { ELEMENTS.screens.password.classList.remove('hidden'); }
-function closePasswordModal() { ELEMENTS.screens.password.classList.add('hidden'); }
-function checkAdminPassword() {
-    if (ELEMENTS.inputs.adminPass.value === "1234") { closePasswordModal(); openAdminPanel(); }
-}
-function openAdminPanel() {
-    ELEMENTS.screens.admin.classList.remove('hidden');
-    loadHistory();
-    const tbody = document.getElementById('admin-table-body');
-    tbody.innerHTML = gameState.history.reverse().map(h => `
-        <tr class="border-b border-gray-700"><td class="p-3">#${h.number}</td><td class="p-3">${h.name}</td><td class="p-3 text-right text-green-400 font-bold">${h.score}</td></tr>
-    `).join('');
-}
-function closeAdminPanel() { ELEMENTS.screens.admin.classList.add('hidden'); }
-function exportToExcel() {
-    const ws = XLSX.utils.json_to_sheet(gameState.history);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Scores");
-    XLSX.writeFile(wb, "AR_English_Scores.xlsx");
-}
-function clearData() { if(confirm("Clear all data?")) { localStorage.removeItem('ar_english_scores_v2'); openAdminPanel(); } }
-
-window.addEventListener('resize', () => {
-    ELEMENTS.canvas.width = window.innerWidth;
-    ELEMENTS.canvas.height = window.innerHeight;
-});
+window.addEventListener('resize', () => { ELEMENTS.canvas.width = window.innerWidth; ELEMENTS.canvas.height = window.innerHeight; });
 window.dispatchEvent(new Event('resize'));
-loadHistory();
 </script>
 </body>
 </html>
