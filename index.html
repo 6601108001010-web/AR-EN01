@@ -10,7 +10,6 @@
     
     <style>
         body { overscroll-behavior: none; background-color: #1a202c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* แก้ไข Canvas ให้เต็มจอและกลับด้านแนวนอน (Mirror) */
         canvas { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -28,15 +27,16 @@
         
         .hidden { display: none !important; }
         
-        /* เพิ่มสไตล์สำหรับ video element ที่ซ่อนอยู่ */
         #input-video {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
-            pointer-events: none;
+            top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none;
+        }
+
+        .pulse-red { animation: pulse-red 1.5s infinite; }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
     </style>
 </head>
@@ -68,7 +68,6 @@
             <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
                 <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
                 <p class="text-center text-gray-400 mb-8">M.1 Level Up (Mobile Optimized)</p>
-                
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Nickname (English)</label>
@@ -80,7 +79,6 @@
                     </div>
                     <button onclick="submitLogin()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95">START GAME</button>
                 </div>
-                
                 <div class="mt-6 text-center">
                     <button onclick="openAdminPass()" class="text-xs text-gray-500 hover:text-gray-300">Admin Panel (Teacher)</button>
                 </div>
@@ -100,31 +98,37 @@
 
         <div id="screen-load" class="hidden absolute inset-0 z-40 bg-gray-900 flex flex-col items-center justify-center">
             <div class="loader mb-4"></div>
-            <p id="loading-text" class="text-gray-400 animate-pulse text-center px-4">Requesting Camera...<br><span class="text-xs text-gray-500">Please Allow Camera Access</span></p>
+            <p id="loading-text" class="text-gray-400 animate-pulse text-center px-4">Requesting Camera...</p>
         </div>
 
         <div id="screen-tutorial" class="hidden absolute inset-0 z-45 bg-black/90 flex flex-col items-center justify-center p-6 text-center">
             <div class="floating text-6xl mb-4">😲</div>
             <h2 class="text-3xl font-bold text-yellow-400 mb-4">How to Play</h2>
-            <ul class="text-left space-y-3 text-gray-300 mb-8 max-w-sm mx-auto">
-                <li>1. Read the question.</li>
-                <li>2. Find the falling answer.</li>
-                <li>3. <b>Open your mouth</b> to eat the correct word!</li>
+            <ul class="text-left space-y-3 text-gray-300 mb-8 max-w-sm mx-auto text-sm">
+                <li>1. Read the question above.</li>
+                <li>2. Find the falling correct word.</li>
+                <li>3. <b>Open your mouth</b> to eat it!</li>
+                <li>4. <b>Speak the word</b> for bonus points!</li>
             </ul>
-            <div class="h-64 overflow-y-auto w-full max-w-md bg-gray-800 rounded-lg p-4 mb-4 border border-gray-700 scroll-content">
-                <h3 class="text-purple-400 font-bold mb-2 sticky top-0 bg-gray-800 pb-2">Vocabulary (M.1)</h3>
-                <div id="cheat-list" class="space-y-2 text-sm"></div>
-            </div>
             <button id="tutorial-btn" class="px-8 py-3 bg-purple-600 rounded-full font-bold shadow-lg">I'm Ready!</button>
         </div>
 
         <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6">
             <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30 shadow-2xl">
                 <h2 class="text-2xl font-bold text-white mb-2">Bonus Round! 🎤</h2>
-                <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-2 mt-4">TARGET</div>
+                <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-1 mt-4 uppercase">TARGET</div>
+                <div id="speech-hint" class="text-sm text-gray-400 mb-4 italic italic">/ pronunciation /</div>
+                
                 <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">Tap mic & say the word</div>
-                <button onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-4">🎙️</button>
-                <button onclick="skipSpeech()" class="text-gray-500 text-sm hover:text-white underline">Skip</button>
+                
+                <button id="mic-button" onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-6">🎙️</button>
+                
+                <div class="flex gap-4 justify-center">
+                    <button onclick="speakQuestion(document.getElementById('speech-target-word').innerText)" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-gray-200 text-sm flex items-center gap-2 transition">
+                        <span>🔊 Listen</span>
+                    </button>
+                    <button onclick="skipSpeech()" class="bg-transparent border border-gray-600 px-4 py-2 rounded-xl text-gray-400 text-sm hover:text-white transition">Skip</button>
+                </div>
             </div>
         </div>
 
@@ -137,21 +141,16 @@
                     <div class="text-gray-500 text-sm uppercase tracking-wider mb-1">Total Score</div>
                     <div id="final-score" class="text-5xl font-bold text-green-400">0</div>
                 </div>
-                <div class="space-y-3 w-full max-w-xs">
-                    <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Next Student</button>
-                    <button onclick="openAdminPass()" class="w-full bg-gray-700 text-gray-300 font-bold py-3 rounded-xl shadow hover:bg-gray-600 text-sm">Teacher Panel</button>
-                </div>
+                <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Next Student</button>
             </div>
         </div>
 
         <div id="screen-admin" class="hidden absolute inset-0 z-[70] bg-gray-900 flex flex-col p-4 overflow-hidden">
             <div class="flex justify-between items-center mb-4 bg-gray-800 p-4 rounded-xl shadow-lg">
-                <div>
-                    <h2 class="text-2xl font-bold text-purple-400">Classroom Scoreboard</h2>
-                </div>
+                <h2 class="text-2xl font-bold text-purple-400">Scoreboard</h2>
                 <div class="flex gap-2">
-                    <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold text-sm shadow">Export</button>
-                    <button onclick="clearData()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-bold text-sm shadow">Clear</button>
+                    <button onclick="exportToExcel()" class="bg-green-600 px-4 py-2 rounded font-bold text-sm">Export</button>
+                    <button onclick="clearData()" class="bg-red-600 px-4 py-2 rounded font-bold text-sm">Clear</button>
                     <button onclick="closeAdminPanel()" class="bg-gray-600 px-4 py-2 rounded text-sm">Close</button>
                 </div>
             </div>
@@ -169,30 +168,35 @@
     </div>
 
 <script>
-// --- CONFIGURATION ---
+// --- CONFIG & DB ---
 const CONFIG = {
     mouthThreshold: 0.05,
     eatDistance: 60,
-    gravity: 2.5, // เร็วขึ้นนิดหน่อยเพื่อความสนุก
-    spawnRate: 100,
+    gravity: 2.2,
+    spawnRate: 110,
     totalQuestions: 5
 };
 
-// --- QUESTIONS (M.1) ---
 const QUESTIONS_DB = [
-    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going", "Good"], correct: ["Went"] },
-    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring", "Boat"], correct: ["Bought"] },
-    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Hard", "Small", "Gold"], correct: ["Cheap"] },
-    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo", "Park", "Shop"], correct: ["Library"] },
-    { q: "Who works in a hospital?", list: ["Doctor", "Teacher", "Pilot", "Chef", "Artist"], correct: ["Doctor"] },
-    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo", "Phuket", "China"], correct: ["Bangkok"] },
-    { q: "Twelve months make a...?", list: ["Year", "Week", "Day", "Hour", "Time"], correct: ["Year"] },
-    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard", "Big", "Easy"], correct: ["Safe"] },
-    { q: "Subject about numbers?", list: ["Math", "Art", "Music", "Thai", "Gym"], correct: ["Math"] },
-    { q: "What is H2O?", list: ["Water", "Fire", "Air", "Earth", "Gold"], correct: ["Water"] }
+    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going"], correct: ["Went"] },
+    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring"], correct: ["Bought"] },
+    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Hard", "Small"], correct: ["Cheap"] },
+    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo", "Park"], correct: ["Library"] },
+    { q: "Who works in a hospital?", list: ["Doctor", "Teacher", "Pilot", "Chef"], correct: ["Doctor"] },
+    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo", "Phuket"], correct: ["Bangkok"] },
+    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard", "Big"], correct: ["Safe"] },
+    { q: "Subject about numbers?", list: ["Math", "Art", "Music", "Thai"], correct: ["Math"] },
+    { q: "What is H2O?", list: ["Water", "Fire", "Air", "Earth"], correct: ["Water"] }
 ];
 
-// --- STATE MANAGEMENT ---
+const PHONETIC_MAP = {
+    "Went": "wen-t", "Bought": "bau-t", "Cheap": "cheep", "Library": "lie-brer-ee",
+    "Doctor": "dok-ter", "Bangkok": "bang-kok", "Year": "yeer", "Safe": "sayf",
+    "Math": "math", "Water": "wah-ter"
+};
+
+// --- STATE ---
+let faceMesh;
 const ELEMENTS = {
     video: document.getElementById('input-video'),
     canvas: document.getElementById('output-canvas'),
@@ -211,7 +215,6 @@ const ELEMENTS = {
         score: document.getElementById('score-text'),
         finalScore: document.getElementById('final-score'),
         toast: document.getElementById('toast'),
-        cheatList: document.getElementById('cheat-list'),
         speechTarget: document.getElementById('speech-target-word'),
         speechStatus: document.getElementById('speech-status')
     },
@@ -223,7 +226,6 @@ const ELEMENTS = {
 };
 
 const ctx = ELEMENTS.canvas.getContext('2d');
-
 let gameState = {
     isPlaying: false,
     score: 0,
@@ -238,112 +240,86 @@ let gameState = {
     cameraActive: false
 };
 
-// --- LOCAL STORAGE ---
+// --- CORE FUNCTIONS ---
 function loadHistory() {
-    const stored = localStorage.getItem('ar_english_scores');
+    const stored = localStorage.getItem('ar_english_scores_v2');
     if (stored) gameState.history = JSON.parse(stored);
 }
 function saveHistory(record) {
     gameState.history.push(record);
-    localStorage.setItem('ar_english_scores', JSON.stringify(gameState.history));
+    localStorage.setItem('ar_english_scores_v2', JSON.stringify(gameState.history));
 }
-function clearData() {
-    if(confirm("Clear ALL data?")) {
-        gameState.history = [];
-        localStorage.removeItem('ar_english_scores');
-        openAdminPanel();
-    }
-}
-loadHistory();
 
-// --- INIT CHEAT SHEET ---
-ELEMENTS.ui.cheatList.innerHTML = QUESTIONS_DB.map((q) => `
-    <div class="bg-gray-700/50 p-2 rounded border border-gray-600/50 mb-1">
-        <div class="text-yellow-300 text-xs font-semibold">${q.q}</div>
-        <div class="text-green-400 text-xs">${q.correct[0]}</div>
-    </div>
-`).join('');
-
-// --- MEDIA PIPE FACEMESH SETUP (MOBILE OPTIMIZED) ---
-// เราโหลด FaceMesh แต่ไม่ใช้ Camera Utils เพื่อลดความซับซ้อนและควบคุมได้เอง
-let faceMesh;
 async function initFaceMesh() {
     faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: false, // ปิดอันนี้บนมือถือจะเร็วขึ้นมาก
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
+    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     faceMesh.onResults(onResults);
     await faceMesh.initialize();
 }
 
-// --- NEW CAMERA LOGIC (NATIVE) ---
 async function startCamera() {
     try {
         ELEMENTS.screens.login.classList.add('hidden');
         ELEMENTS.screens.load.classList.remove('hidden');
-        document.getElementById('loading-text').innerText = "Loading AI Model...";
-
         if (!faceMesh) await initFaceMesh();
 
-        document.getElementById('loading-text').innerText = "Starting Camera...";
-        
-        // ขอใช้กล้องแบบ Native (ระบุ facingMode: user เพื่อเอากล้องหน้าแน่นอน)
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                facingMode: 'user', 
-                width: { ideal: 640 }, 
-                height: { ideal: 480 } 
-            },
-            audio: false
-        });
-
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
         ELEMENTS.video.srcObject = stream;
         
-        // รอให้วิดีโอพร้อมทำงาน
         return new Promise((resolve) => {
             ELEMENTS.video.onloadedmetadata = () => {
                 ELEMENTS.video.play();
                 gameState.cameraActive = true;
-                predictLoop(); // เริ่ม Loop จับหน้า
-                
-                // Camera Ready
+                predictLoop();
                 ELEMENTS.screens.load.classList.add('hidden');
                 ELEMENTS.screens.tutorial.classList.remove('hidden');
                 resolve();
             };
         });
-
     } catch (e) {
-        alert("Camera Error: " + e.message + "\nPlease use Chrome/Safari and allow camera access.");
-        ELEMENTS.screens.load.classList.add('hidden');
+        alert("Camera Error: " + e.message);
         ELEMENTS.screens.login.classList.remove('hidden');
     }
 }
 
-// Loop ส่งภาพให้ AI (แทน Camera Utils)
 async function predictLoop() {
     if (gameState.cameraActive) {
         await faceMesh.send({ image: ELEMENTS.video });
-        requestAnimationFrame(predictLoop); // ทำซ้ำเรื่อยๆ
+        requestAnimationFrame(predictLoop);
     }
 }
 
-// --- GAME LOGIC ---
+function onResults(results) {
+    ctx.save();
+    ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
+    ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        const upper = landmarks[13];
+        const lower = landmarks[14];
+        const x = upper.x * ELEMENTS.canvas.width;
+        const y = (upper.y + lower.y) / 2 * ELEMENTS.canvas.height;
+        gameState.mouthPos = { x, y };
+        gameState.isMouthOpen = Math.abs(upper.y - lower.y) > CONFIG.mouthThreshold;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+        ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// --- GAMEPLAY ---
 function submitLogin() {
     const name = ELEMENTS.inputs.name.value.trim();
     const num = ELEMENTS.inputs.number.value.trim();
-    if (!name || !num) { showToast("Enter Name & Number"); return; }
-    
+    if (!name || !num) return showToast("Enter Name & Number");
     gameState.user = { name, number: num };
     document.getElementById('display-name').innerText = name;
     document.getElementById('display-number').innerText = `#${num}`;
-    document.getElementById('end-name').innerText = name;
-    document.getElementById('end-number').innerText = num;
-
-    // เริ่มโหลดกล้อง
     startCamera();
 }
 
@@ -357,19 +333,14 @@ function startGame() {
     gameState.qIndex = 0;
     gameState.isPlaying = true;
     gameState.items = [];
-    
-    QUESTIONS_DB.sort(() => Math.random() - 0.5); // Shuffle
+    QUESTIONS_DB.sort(() => Math.random() - 0.5);
     ELEMENTS.ui.hud.classList.remove('hidden');
-    
     loadQuestion();
-    gameLoop(); // เริ่ม Game Loop (Physic & Drawing)
+    gameLoop();
 }
 
 function loadQuestion() {
-    if (gameState.qIndex >= CONFIG.totalQuestions) {
-        gameOver();
-        return;
-    }
+    if (gameState.qIndex >= CONFIG.totalQuestions) return gameOver();
     gameState.currentQuestion = QUESTIONS_DB[gameState.qIndex];
     ELEMENTS.ui.question.innerText = gameState.currentQuestion.q;
     ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
@@ -377,47 +348,8 @@ function loadQuestion() {
     speakQuestion();
 }
 
-function onResults(results) {
-    // วาดภาพวิดีโอลง Canvas
-    ctx.save();
-    ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-    
-    // วาดภาพจากกล้อง (Mirror ไว้แล้วใน CSS แต่ใน JS ต้อง Flip เพื่อให้ตำแหน่งปากตรงกับภาพ)
-    // ตรงนี้เราวาดแบบปกติ เพราะ CSS พลิก Canvas ทั้งอันให้แล้ว
-    ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        const landmarks = results.multiFaceLandmarks[0];
-        const upper = landmarks[13];
-        const lower = landmarks[14];
-        
-        // คำนวณตำแหน่ง (เนื่องจาก Canvas ถูก CSS พลิก เราต้องคำนวณ X ให้ตรงข้ามถ้าจะใช้ Logic เดิม)
-        // แต่เพื่อความง่าย เราใช้ Coordinate ปกติ แล้วให้ CSS จัดการการมองเห็น
-        const x = upper.x * ELEMENTS.canvas.width;
-        const y = (upper.y + lower.y) / 2 * ELEMENTS.canvas.height;
-        
-        gameState.mouthPos = { x, y };
-        
-        const distance = Math.abs(upper.y - lower.y); // ระยะห่างปากบนล่าง (Normalized 0.0 - 1.0)
-        gameState.isMouthOpen = distance > CONFIG.mouthThreshold;
-
-        // วาดจุดที่ปาก (Visual Debug)
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
-        ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-    }
-    ctx.restore();
-}
-
 function gameLoop() {
     if (!gameState.isPlaying) return;
-
-    ctx.save();
-    // ตัวแปรปรับสเกลเพื่อให้เล่นบนจอมือถือและจอคอมได้เหมือนกัน
-    // ของเดิม Canvas ถูก Flip ด้วย CSS ดังนั้น Text จะกลับด้าน เราต้อง Scale Text คืน
-    
     gameState.frameCount++;
     if (gameState.frameCount % CONFIG.spawnRate === 0) spawnItem();
 
@@ -425,48 +357,34 @@ function gameLoop() {
         let item = gameState.items[i];
         item.y += CONFIG.gravity;
 
-        // วาดคำศัพท์
         ctx.save();
         ctx.translate(item.x, item.y);
-        ctx.scale(-1, 1); // พลิกตัวอักษรกลับให้อ่านออก (เพราะ Canvas หลักโดนพลิก)
-        
-        ctx.font = "bold 28px sans-serif";
-        ctx.fillStyle = item.isCorrect ? "#4ade80" : "#ffffff"; // สีเขียวถ้าถูก ขาวถ้าผิด (ช่วยใบ้นิดนึง)
-        ctx.shadowColor = "black";
-        ctx.shadowBlur = 4;
+        ctx.scale(-1, 1);
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillStyle = "white";
+        ctx.shadowColor = "black"; ctx.shadowBlur = 4;
         ctx.textAlign = "center";
         ctx.fillText(item.text, 0, 0);
         ctx.restore();
 
-        // ตรวจจับการกิน
         if (gameState.isMouthOpen) {
-            const dx = gameState.mouthPos.x - item.x;
-            const dy = gameState.mouthPos.y - item.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
+            const dist = Math.sqrt((gameState.mouthPos.x - item.x)**2 + (gameState.mouthPos.y - item.y)**2);
             if (dist < CONFIG.eatDistance) {
                 handleEat(item);
                 gameState.items.splice(i, 1);
                 continue;
             }
         }
-
         if (item.y > ELEMENTS.canvas.height) gameState.items.splice(i, 1);
     }
-    ctx.restore();
-    
-    if(gameState.isPlaying) requestAnimationFrame(gameLoop);
+    requestAnimationFrame(gameLoop);
 }
 
 function spawnItem() {
-    if(!gameState.currentQuestion) return;
-    const margin = 50;
-    const x = margin + Math.random() * (ELEMENTS.canvas.width - margin * 2);
-    
-    const isCorrect = Math.random() < 0.45; // โอกาสออกข้อถูก 45%
-    let text = isCorrect ? gameState.currentQuestion.correct[0] : 
-               gameState.currentQuestion.list.filter(w => !gameState.currentQuestion.correct.includes(w))[Math.floor(Math.random() * 3)];
-    
+    const x = 50 + Math.random() * (ELEMENTS.canvas.width - 100);
+    const isCorrect = Math.random() < 0.4;
+    const text = isCorrect ? gameState.currentQuestion.correct[0] : 
+                 gameState.currentQuestion.list.filter(w => !gameState.currentQuestion.correct.includes(w))[Math.floor(Math.random() * 3)];
     gameState.items.push({ x, y: -20, text, isCorrect });
 }
 
@@ -475,7 +393,7 @@ function handleEat(item) {
         gameState.score += 10;
         showToast("Yummy! +10", "green");
         gameState.isPlaying = false;
-        setTimeout(() => { startSpeechRound(item.text); }, 500);
+        setTimeout(() => startSpeechRound(item.text), 600);
     } else {
         gameState.score = Math.max(0, gameState.score - 5);
         showToast("Wrong! -5");
@@ -483,41 +401,57 @@ function handleEat(item) {
     }
 }
 
-// --- SPEECH & UTILS ---
+// --- SPEECH LOGIC (MULTI-TRY & HINT) ---
 function startSpeechRound(word) {
     ELEMENTS.screens.speech.classList.remove('hidden');
     ELEMENTS.ui.hud.classList.add('hidden');
     ELEMENTS.ui.speechTarget.innerText = word;
+    
+    const hint = PHONETIC_MAP[word] || "";
+    document.getElementById('speech-hint').innerText = hint ? `Try: ${hint}` : "";
+    ELEMENTS.ui.speechStatus.innerText = "Tap mic to speak";
+    
+    const micBtn = document.getElementById('mic-button');
+    micBtn.className = "w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-6";
 }
 
 function startSpeechRecognition() {
-    // ใช้ WebKitSpeechRecognition สำหรับ Chrome/Android/Safari (บางเวอร์ชัน)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        alert("Speech not supported on this browser.");
-        skipSpeech();
-        return;
-    }
+    if (!SpeechRecognition) return (alert("Speech not supported"), skipSpeech());
+
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.continuous = false;
+    const micBtn = document.getElementById('mic-button');
     
-    ELEMENTS.ui.speechStatus.innerText = "Listening...";
-    recognition.start();
+    recognition.onstart = () => {
+        micBtn.classList.add('pulse-red', 'bg-red-500');
+        ELEMENTS.ui.speechStatus.innerText = "Listening...";
+    };
 
     recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase();
-        if (transcript.includes(target) || target.includes(transcript)) {
-            showToast("Perfect! +20", "green");
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase().trim();
+        
+        if (transcript === target || transcript.includes(target)) {
+            micBtn.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg";
+            showToast("Excellent! +20", "green");
             gameState.score += 20;
-            setTimeout(skipSpeech, 1000);
+            ELEMENTS.ui.speechStatus.innerText = `Heard: "${transcript}" ✅`;
+            setTimeout(skipSpeech, 1500);
         } else {
-            showToast(`Heard: ${transcript} (Try again)`);
-            ELEMENTS.ui.speechStatus.innerText = "Tap mic to try again";
+            ELEMENTS.ui.speechStatus.innerText = `Heard "${transcript}"? Try again!`;
+            micBtn.classList.remove('pulse-red', 'bg-red-500');
+            micBtn.classList.add('bg-purple-600');
         }
     };
-    recognition.onerror = () => { ELEMENTS.ui.speechStatus.innerText = "Error/No Match"; };
+
+    recognition.onerror = () => {
+        micBtn.classList.remove('pulse-red', 'bg-red-500');
+        ELEMENTS.ui.speechStatus.innerText = "Try again...";
+    };
+    
+    recognition.onend = () => micBtn.classList.remove('pulse-red');
+    recognition.start();
 }
 
 function skipSpeech() {
@@ -526,82 +460,67 @@ function skipSpeech() {
     gameState.qIndex++;
     gameState.isPlaying = true;
     loadQuestion();
-    requestAnimationFrame(gameLoop);
+    gameLoop();
 }
 
-function speakQuestion() {
-    if(gameState.currentQuestion) {
-        const u = new SpeechSynthesisUtterance(gameState.currentQuestion.q);
-        u.lang = 'en-US';
-        speechSynthesis.speak(u);
-    }
+function speakQuestion(customText) {
+    const text = customText || (gameState.currentQuestion ? gameState.currentQuestion.q : "");
+    if (!text) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 0.85;
+    speechSynthesis.speak(u);
 }
 
+// --- UTILS ---
 function showToast(msg, color="red") {
     const t = ELEMENTS.ui.toast;
     t.innerText = msg;
-    t.className = `absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full shadow-lg z-[90] ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white animate-bounce`;
+    t.className = `absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full shadow-lg z-[90] ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white animate-bounce`;
     t.classList.remove('hidden');
-    setTimeout(() => t.classList.add('hidden'), 2000);
+    setTimeout(() => t.classList.add('hidden'), 1800);
 }
 
-// Admin & Game Over
 function gameOver() {
     gameState.isPlaying = false;
     ELEMENTS.ui.hud.classList.add('hidden');
     ELEMENTS.screens.end.classList.remove('hidden');
     ELEMENTS.ui.finalScore.innerText = gameState.score;
-    saveHistory({
-        name: gameState.user.name,
-        number: gameState.user.number,
-        score: gameState.score,
-        time: new Date().toLocaleTimeString('th-TH')
-    });
-}
-function restartGame() {
-    ELEMENTS.inputs.name.value = "";
-    ELEMENTS.inputs.number.value = "";
-    ELEMENTS.screens.end.classList.add('hidden');
-    ELEMENTS.screens.login.classList.remove('hidden');
-    // กล้องยังเปิดอยู่ ไม่ต้องโหลดใหม่
+    saveHistory({ name: gameState.user.name, number: gameState.user.number, score: gameState.score, date: new Date().toLocaleString() });
 }
 
-// Admin Panel Logic
+function restartGame() {
+    location.reload();
+}
+
+// --- ADMIN PANEL ---
 function openAdminPass() { ELEMENTS.screens.password.classList.remove('hidden'); }
 function closePasswordModal() { ELEMENTS.screens.password.classList.add('hidden'); }
 function checkAdminPassword() {
-    if (ELEMENTS.inputs.adminPass.value === "1234") {
-        closePasswordModal();
-        openAdminPanel();
-    }
+    if (ELEMENTS.inputs.adminPass.value === "1234") { closePasswordModal(); openAdminPanel(); }
 }
 function openAdminPanel() {
     ELEMENTS.screens.admin.classList.remove('hidden');
-    const tbody = document.getElementById('admin-table-body');
     loadHistory();
-    const sorted = [...gameState.history].reverse();
-    tbody.innerHTML = sorted.length ? sorted.map(h => `
-        <tr class="border-b border-gray-700">
-            <td class="p-3 text-gray-400">#${h.number}</td>
-            <td class="p-3 text-white">${h.name}</td>
-            <td class="p-3 text-right text-green-400 font-bold">${h.score}</td>
-        </tr>`).join('') : '<tr><td colspan="3" class="p-4 text-center">No Data</td></tr>';
+    const tbody = document.getElementById('admin-table-body');
+    tbody.innerHTML = gameState.history.reverse().map(h => `
+        <tr class="border-b border-gray-700"><td class="p-3">#${h.number}</td><td class="p-3">${h.name}</td><td class="p-3 text-right text-green-400 font-bold">${h.score}</td></tr>
+    `).join('');
 }
 function closeAdminPanel() { ELEMENTS.screens.admin.classList.add('hidden'); }
 function exportToExcel() {
-    if(!gameState.history.length) return;
     const ws = XLSX.utils.json_to_sheet(gameState.history);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Scores");
-    XLSX.writeFile(wb, "AR_Scores.xlsx");
+    XLSX.writeFile(wb, "AR_English_Scores.xlsx");
 }
+function clearData() { if(confirm("Clear all data?")) { localStorage.removeItem('ar_english_scores_v2'); openAdminPanel(); } }
 
-function resize() {
+window.addEventListener('resize', () => {
     ELEMENTS.canvas.width = window.innerWidth;
     ELEMENTS.canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+});
+window.dispatchEvent(new Event('resize'));
+loadHistory();
 </script>
 </body>
 </html>
