@@ -2,269 +2,328 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR English Eat - M.1 (Thai Phonetic)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR English Eat - Improved</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <style>
-        body { overscroll-behavior: none; background-color: #1a202c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        canvas { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
+        body { overscroll-behavior: none; background-color: #1a202c; overflow: hidden; }
+        /* กลับด้านวิดีโอและแคนวาสเพื่อให้เหมือนกระจก */
+        #container-wrapper { transform: scaleX(-1); position: relative; width: 100%; height: 100%; }
+        canvas { width: 100%; height: 100%; object-fit: cover; }
         
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loader {
-            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
-            border-top: 4px solid #a855f7; width: 40px; height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        
-        .floating { animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-        
-        .hidden { display: none !important; }
-        
-        #input-video { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-
-        .pulse-red { animation: pulse-red 1.5s infinite; }
         @keyframes pulse-red {
             0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
+        .pulse-red { animation: pulse-red 1.5s infinite; }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden text-white select-none">
-    <div id="game-container" class="relative w-full h-full flex justify-center items-center bg-gray-900">
-        
-        <video id="input-video" playsinline webkit-playsinline muted></video>
-        <canvas id="output-canvas" class="absolute inset-0 w-full h-full"></canvas>
+<body class="h-screen w-screen text-white select-none">
 
-        <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between z-10 p-4">
-            <div id="hud" class="hidden bg-black/60 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10 pointer-events-auto">
-                <div id="user-info-display" class="text-xs text-gray-400 mb-1 flex justify-between px-2">
-                    <span id="display-name">Guest</span>
-                    <span id="display-number">#00</span>
+    <div id="game-container" class="relative w-full h-full bg-gray-900 overflow-hidden">
+        
+        <div id="container-wrapper">
+            <video id="input-video" class="hidden" playsinline muted></video>
+            <canvas id="output-canvas"></canvas>
+        </div>
+
+        <div id="ui-layer" class="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4">
+            <div id="hud" class="hidden bg-black/60 backdrop-blur-md rounded-2xl p-4 text-center border border-white/20 pointer-events-auto">
+                <div class="flex justify-between mb-2 text-xs text-purple-300">
+                    <span id="display-info">Player: Guest</span>
+                    <span id="score-text" class="text-green-400 font-bold text-lg">Score: 0</span>
                 </div>
-                <div class="flex justify-center items-center gap-3 mb-2">
+                <div class="flex justify-center items-center gap-3">
                     <div id="question-text" class="text-yellow-400 text-xl font-bold">Loading...</div>
-                    <button onclick="speakQuestion()" class="bg-white/20 rounded-full p-2 w-10 h-10 flex items-center justify-center">🔊</button>
-                </div>
-                <div class="flex justify-between items-center text-sm text-gray-200 px-4">
-                    <span id="score-text" class="text-green-400 font-bold">Score: 0</span>
-                    <span id="status-text" class="text-xs">Open mouth to eat! 😲</span>
+                    <button onclick="speakText(document.getElementById('question-text').innerText)" class="bg-white/20 rounded-full w-10 h-10 flex items-center justify-center">🔊</button>
                 </div>
             </div>
-            <div id="toast" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-lg z-[80]">Error</div>
+            
+            <div id="toast" class="hidden self-center bg-red-500 px-6 py-2 rounded-full font-bold shadow-2xl"></div>
         </div>
 
         <div id="screen-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
-            <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl border border-gray-700">
+            <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl border border-purple-500/50 shadow-2xl">
                 <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
-                <p class="text-center text-gray-400 mb-8">Level: M.1</p>
-                <div class="space-y-4">
-                    <input id="input-name" type="text" placeholder="Nickname (ชื่อเล่น)" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none">
-                    <input id="input-number" type="tel" placeholder="Class Number (เลขที่)" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none">
-                    <button onclick="submitLogin()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 rounded-xl shadow-lg">START GAME</button>
+                <p class="text-center text-gray-400 mb-8 italic">Catch the correct word with your mouth!</p>
+                <input id="input-name" type="text" placeholder="Nickname" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 mb-4 outline-none focus:border-purple-500">
+                <button onclick="startApp()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 py-3 rounded-xl font-bold text-xl hover:scale-105 transition-transform">START GAME</button>
+            </div>
+        </div>
+
+        <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center">
+            <div class="bg-gray-800 p-8 rounded-3xl border border-yellow-500/50 max-w-sm w-full">
+                <h2 class="text-xl text-purple-400 mb-2">Speak it! 🎤</h2>
+                <div id="speech-target" class="text-5xl font-bold text-white mb-4 uppercase">WORD</div>
+                <div id="speech-hint-th" class="text-2xl text-green-400 mb-1 font-bold">คำอ่าน</div>
+                <div id="speech-status" class="text-sm text-gray-400 mb-6">Press the mic and speak</div>
+                
+                <button id="mic-button" onclick="handleSpeech()" class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg">🎙️</button>
+                
+                <div class="flex flex-col gap-2">
+                    <button onclick="speakText(document.getElementById('speech-target').innerText)" class="text-sm text-gray-300">🔊 Listen again</button>
+                    <button onclick="closeSpeech()" class="text-xs text-gray-500 underline">Skip Round</button>
                 </div>
             </div>
         </div>
 
-        <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6">
-            <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30">
-                <h2 class="text-2xl font-bold text-white mb-2">Bonus Round! 🎤</h2>
-                <div id="speech-target-word" class="text-5xl font-bold text-yellow-400 mb-1 uppercase tracking-wider">TARGET</div>
-                
-                <div class="mb-6 space-y-1">
-                    <div id="speech-hint-th" class="text-2xl text-green-400 font-bold">คำอ่านภาษาไทย</div>
-                    <div id="speech-hint-en" class="text-sm text-gray-400 italic">/ pronunciation /</div>
-                </div>
-                
-                <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">กดปุ่มไมค์แล้วพูด</div>
-                
-                <button id="mic-button" onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl shadow-lg mx-auto mb-6">🎙️</button>
-                
-                <div class="flex gap-4 justify-center">
-                    <button onclick="speakQuestion(document.getElementById('speech-target-word').innerText)" class="bg-gray-700 px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-                        <span>🔊 ฟังเสียง</span>
-                    </button>
-                    <button onclick="skipSpeech()" class="text-gray-500 text-xs underline">ข้าม (Skip)</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="screen-load" class="hidden absolute inset-0 z-40 bg-gray-900 flex flex-col items-center justify-center"><div class="loader mb-4"></div><p id="loading-text">Loading...</p></div>
-        <div id="screen-end" class="hidden absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
-            <h2 class="text-4xl font-bold mb-4">จบเกม! (Game Over)</h2>
-            <div class="text-5xl font-bold text-green-400 mb-8" id="final-score">0</div>
-            <button onclick="location.reload()" class="bg-white text-black px-8 py-3 rounded-xl font-bold">เล่นอีกครั้ง</button>
+        <div id="screen-end" class="hidden absolute inset-0 z-50 bg-gray-900/90 flex flex-col items-center justify-center p-6 text-center">
+            <h2 class="text-4xl font-bold mb-2">Game Over!</h2>
+            <div class="text-7xl font-bold text-green-400 mb-8" id="final-score">0</div>
+            <button onclick="location.reload()" class="bg-white text-black px-10 py-3 rounded-xl font-bold text-lg">Play Again</button>
         </div>
     </div>
 
 <script>
-const CONFIG = { mouthThreshold: 0.05, eatDistance: 60, gravity: 2.2, spawnRate: 110, totalQuestions: 5 };
+// --- Configuration ---
+const CONFIG = {
+    mouthThreshold: 0.045,
+    gravity: 3.5,
+    spawnRate: 90, // ปรับให้หล่นเร็วขึ้นเล็กน้อย
+    totalQuestions: 10
+};
 
-// Database with Thai Phonetics
 const QUESTIONS_DB = [
-    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes"], correct: ["Went"] },
-    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Bring"], correct: ["Bought"] },
-    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Small"], correct: ["Cheap"] },
-    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo"], correct: ["Library"] },
-    { q: "Who works in a hospital?", list: ["Doctor", "Pilot", "Chef"], correct: ["Doctor"] },
-    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo"], correct: ["Bangkok"] },
-    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard"], correct: ["Safe"] },
-    { q: "Subject about numbers?", list: ["Math", "Art", "Thai"], correct: ["Math"] },
-    { q: "What is H2O?", list: ["Water", "Fire", "Air"], correct: ["Water"] }
+    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes"], correct: "Went", th: "เวนท์" },
+    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Bring"], correct: "Bought", th: "บอท" },
+    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Small"], correct: "Cheap", th: "ชีพ" },
+    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo"], correct: "Library", th: "ไล-เบร-รี" },
+    { q: "Who works in a hospital?", list: ["Doctor", "Pilot", "Chef"], correct: "Doctor", th: "ดอค-เทอร์" },
+    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo"], correct: "Bangkok", th: "แบง-ค็อก" },
+    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard"], correct: "Safe", th: "เซฟ" },
+    { q: "Subject about numbers?", list: ["Math", "Art", "Thai"], correct: "Math", th: "แมธ" },
+    { q: "What is H2O?", list: ["Water", "Fire", "Air"], correct: "Water", th: "วอ-เทอร์" }
 ];
 
-// เพิ่มคำอ่านภาษาไทยและภาษาอังกฤษที่นี่
-const PHONETIC_MAP = {
-    "Went": { th: "เวนท์", en: "/went/" },
-    "Bought": { th: "บอท", en: "/bɔːt/" },
-    "Cheap": { th: "ชีพ", en: "/tʃiːp/" },
-    "Library": { th: "ไล-เบร-รี", en: "/ˈlaɪbreri/" },
-    "Doctor": { th: "ดอค-เทอร์", en: "/ˈdɒktə(r)/" },
-    "Bangkok": { th: "แบง-ค็อก", en: "/ˈbæŋkɒk/" },
-    "Safe": { th: "เซฟ", en: "/seɪf/" },
-    "Math": { th: "แมธ", en: "/mæθ/" },
-    "Water": { th: "วอ-เทอร์", en: "/ˈwɔːtə(r)/" }
+// --- Game State ---
+let state = {
+    isPlaying: false,
+    score: 0,
+    qIndex: 0,
+    items: [],
+    mouth: { x: 0, y: 0, isOpen: false },
+    currentQ: null,
+    canvasSize: { w: 0, h: 0 }
 };
 
-let faceMesh, ctx, gameState = { isPlaying: false, score: 0, qIndex: 0, items: [], mouthPos: {x:0, y:0}, isMouthOpen: false, frameCount: 0, currentQuestion: null, user: {name:"", number:""}, cameraActive: false };
+let faceMesh;
+const video = document.getElementById('input-video');
+const canvas = document.getElementById('output-canvas');
+const ctx = canvas.getContext('2d');
 
-const ELEMENTS = {
-    video: document.getElementById('input-video'),
-    canvas: document.getElementById('output-canvas'),
-    screens: { login: document.getElementById('screen-login'), load: document.getElementById('screen-load'), end: document.getElementById('screen-end'), speech: document.getElementById('screen-speech') },
-    ui: { hud: document.getElementById('hud'), question: document.getElementById('question-text'), score: document.getElementById('score-text'), finalScore: document.getElementById('final-score'), toast: document.getElementById('toast'), speechTarget: document.getElementById('speech-target-word'), speechStatus: document.getElementById('speech-status') }
-};
-
-ctx = ELEMENTS.canvas.getContext('2d');
-
-// --- Functions ---
-async function startCamera() {
-    ELEMENTS.screens.login.classList.add('hidden');
-    ELEMENTS.screens.load.classList.remove('hidden');
+// --- Core Logic ---
+async function startApp() {
+    const name = document.getElementById('input-name').value || "Guest";
+    document.getElementById('display-info').innerText = `Player: ${name}`;
+    document.getElementById('screen-login').classList.add('hidden');
+    
+    // Init FaceMesh
     faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false });
+    faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5 });
     faceMesh.onResults(onResults);
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-    ELEMENTS.video.srcObject = stream;
-    ELEMENTS.video.play();
-    gameState.cameraActive = true;
-    predictLoop();
-    ELEMENTS.screens.load.classList.add('hidden');
-    startGame();
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+        video.srcObject = stream;
+        await video.play();
+        resize();
+        requestAnimationFrame(gameLoop);
+        startGame();
+    } catch (err) {
+        alert("Camera access denied or not found.");
+    }
 }
 
-async function predictLoop() { if (gameState.cameraActive) { await faceMesh.send({ image: ELEMENTS.video }); requestAnimationFrame(predictLoop); } }
+function resize() {
+    state.canvasSize.w = window.innerWidth;
+    state.canvasSize.h = window.innerHeight;
+    canvas.width = state.canvasSize.w;
+    canvas.height = state.canvasSize.h;
+}
+
+window.addEventListener('resize', resize);
 
 function onResults(results) {
-    ctx.save();
-    ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-    ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Video Frame
+    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
     if (results.multiFaceLandmarks?.[0]) {
         const landmarks = results.multiFaceLandmarks[0];
-        const x = landmarks[13].x * ELEMENTS.canvas.width;
-        const y = (landmarks[13].y + landmarks[14].y) / 2 * ELEMENTS.canvas.height;
-        gameState.mouthPos = { x, y };
-        gameState.isMouthOpen = Math.abs(landmarks[13].y - landmarks[14].y) > CONFIG.mouthThreshold;
-        ctx.beginPath(); ctx.arc(x, y, 15, 0, 2*Math.PI); ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000"; ctx.stroke();
+        // 13 = Upper Lip Bottom, 14 = Lower Lip Top
+        const topLip = landmarks[13];
+        const botLip = landmarks[14];
+        
+        state.mouth.x = topLip.x * canvas.width;
+        state.mouth.y = (topLip.y + botLip.y) / 2 * canvas.height;
+        
+        const mouthGap = Math.abs(topLip.y - botLip.y);
+        state.mouth.isOpen = mouthGap > CONFIG.mouthThreshold;
+
+        // Visual Feedback (Circle at mouth)
+        ctx.beginPath();
+        ctx.arc(state.mouth.x, state.mouth.y, 20, 0, Math.PI * 2);
+        ctx.strokeStyle = state.mouth.isOpen ? "#00ff00" : "#ff3333";
+        ctx.lineWidth = 3;
+        ctx.stroke();
     }
-    ctx.restore();
 }
 
 function startGame() {
-    gameState.score = 0; gameState.qIndex = 0; gameState.isPlaying = true;
-    QUESTIONS_DB.sort(() => Math.random() - 0.5);
-    ELEMENTS.ui.hud.classList.remove('hidden');
-    loadQuestion();
-    gameLoop();
+    state.score = 0;
+    state.qIndex = 0;
+    state.items = [];
+    state.isPlaying = true;
+    document.getElementById('hud').classList.remove('hidden');
+    loadNextQuestion();
 }
 
-function loadQuestion() {
-    if (gameState.qIndex >= CONFIG.totalQuestions) return gameOver();
-    gameState.currentQuestion = QUESTIONS_DB[gameState.qIndex];
-    ELEMENTS.ui.question.innerText = gameState.currentQuestion.q;
-    ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    speakQuestion();
+function loadNextQuestion() {
+    if (state.qIndex >= CONFIG.totalQuestions) return endGame();
+    state.currentQ = QUESTIONS_DB[Math.floor(Math.random() * QUESTIONS_DB.length)];
+    document.getElementById('question-text').innerText = state.currentQ.q;
+    speakText(state.currentQ.q);
 }
 
+let frameCount = 0;
 function gameLoop() {
-    if (!gameState.isPlaying) return;
-    gameState.frameCount++;
-    if (gameState.frameCount % CONFIG.spawnRate === 0) {
-        const isCorrect = Math.random() < 0.4;
-        const text = isCorrect ? gameState.currentQuestion.correct[0] : gameState.currentQuestion.list[Math.floor(Math.random()*gameState.currentQuestion.list.length)];
-        gameState.items.push({ x: 50 + Math.random() * (ELEMENTS.canvas.width - 100), y: -20, text, isCorrect });
+    if (video.readyState === 4) {
+        faceMesh.send({ image: video });
     }
-    for (let i = gameState.items.length - 1; i >= 0; i--) {
-        let item = gameState.items[i]; item.y += CONFIG.gravity;
-        ctx.save(); ctx.translate(item.x, item.y); ctx.scale(-1, 1); ctx.font = "bold 24px sans-serif"; ctx.fillStyle = "white"; ctx.fillText(item.text, 0, 0); ctx.restore();
-        if (gameState.isMouthOpen && Math.sqrt((gameState.mouthPos.x - item.x)**2 + (gameState.mouthPos.y - item.y)**2) < CONFIG.eatDistance) {
-            if (item.isCorrect) { gameState.score += 10; gameState.isPlaying = false; setTimeout(() => startSpeechRound(item.text), 600); }
-            else { gameState.score = Math.max(0, gameState.score - 5); showToast("ผิด! -5"); }
-            gameState.items.splice(i, 1);
-        } else if (item.y > ELEMENTS.canvas.height) gameState.items.splice(i, 1);
+
+    if (state.isPlaying) {
+        frameCount++;
+        
+        // Spawn Items
+        if (frameCount % CONFIG.spawnRate === 0) {
+            const isCorrect = Math.random() > 0.5;
+            const text = isCorrect ? state.currentQ.correct : state.currentQ.list.filter(w => w !== state.currentQ.correct)[Math.floor(Math.random() * 2)];
+            state.items.push({
+                x: 50 + Math.random() * (canvas.width - 100),
+                y: -50,
+                text: text,
+                isCorrect: isCorrect
+            });
+        }
+
+        // Update & Draw Items
+        for (let i = state.items.length - 1; i >= 0; i--) {
+            let item = state.items[i];
+            item.y += CONFIG.gravity;
+
+            // Draw Word (Flip text back so it's readable)
+            ctx.save();
+            ctx.translate(item.x, item.y);
+            ctx.scale(-1, 1); // Flip text back
+            ctx.font = "bold 28px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "white";
+            // Shadow
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = 4;
+            ctx.fillText(item.text, 0, 0);
+            ctx.restore();
+
+            // Collision Detection
+            const dist = Math.sqrt((state.mouth.x - item.x)**2 + (state.mouth.y - item.y)**2);
+            if (state.mouth.isOpen && dist < 60) {
+                if (item.isCorrect) {
+                    state.score += 10;
+                    state.isPlaying = false;
+                    setTimeout(() => triggerSpeechBonus(item.text), 300);
+                } else {
+                    state.score = Math.max(0, state.score - 5);
+                    showToast("Wrong! -5");
+                }
+                state.items.splice(i, 1);
+            } else if (item.y > canvas.height + 50) {
+                state.items.splice(i, 1);
+            }
+        }
     }
+    
+    document.getElementById('score-text').innerText = `Score: ${state.score}`;
     requestAnimationFrame(gameLoop);
 }
 
-function startSpeechRound(word) {
-    ELEMENTS.screens.speech.classList.remove('hidden');
-    ELEMENTS.ui.hud.classList.add('hidden');
-    ELEMENTS.ui.speechTarget.innerText = word;
-    
-    // แสดงคำอ่านไทยและอังกฤษ
-    const phonetic = PHONETIC_MAP[word] || { th: "อ่านตามคำข้างบน", en: "" };
-    document.getElementById('speech-hint-th').innerText = phonetic.th;
-    document.getElementById('speech-hint-en').innerText = phonetic.en;
-    
-    ELEMENTS.ui.speechStatus.innerText = "กดปุ่มไมค์แล้วพูด";
-    document.getElementById('mic-button').className = "w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl shadow-lg mx-auto mb-6";
+// --- Features ---
+function triggerSpeechBonus(word) {
+    const screen = document.getElementById('screen-speech');
+    screen.classList.remove('hidden');
+    document.getElementById('speech-target').innerText = word;
+    document.getElementById('speech-hint-th').innerText = state.currentQ.th;
+    document.getElementById('speech-status').innerText = "Click mic and speak";
+    document.getElementById('mic-button').className = "w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-lg";
 }
 
-function startSpeechRecognition() {
+function handleSpeech() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return skipSpeech();
+    if (!SpeechRecognition) return alert("Speech not supported");
+
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    const micBtn = document.getElementById('mic-button');
-    
-    recognition.onstart = () => { micBtn.classList.add('pulse-red', 'bg-red-500'); ELEMENTS.ui.speechStatus.innerText = "กำลังฟัง..."; };
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase();
-        if (transcript.includes(target)) {
-            micBtn.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6";
-            gameState.score += 20; showToast("เก่งมาก! +20", "green");
-            setTimeout(skipSpeech, 1500);
+    const btn = document.getElementById('mic-button');
+
+    recognition.onstart = () => {
+        btn.classList.add('pulse-red', 'bg-red-500');
+        document.getElementById('speech-status').innerText = "Listening...";
+    };
+
+    recognition.onresult = (e) => {
+        const result = e.results[0][0].transcript.toLowerCase();
+        const target = document.getElementById('speech-target').innerText.toLowerCase();
+        
+        if (result.includes(target)) {
+            state.score += 20;
+            btn.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6";
+            document.getElementById('speech-status').innerText = "Excellent! +20";
+            setTimeout(closeSpeech, 1500);
         } else {
-            ELEMENTS.ui.speechStatus.innerText = `ได้ยินว่า "${transcript}" ลองใหม่นะ!`;
-            micBtn.classList.remove('pulse-red', 'bg-red-500'); micBtn.classList.add('bg-purple-600');
+            document.getElementById('speech-status').innerText = `Heard "${result}", try again!`;
+            btn.classList.remove('pulse-red', 'bg-red-500');
         }
     };
-    recognition.onerror = () => { micBtn.classList.remove('pulse-red'); ELEMENTS.ui.speechStatus.innerText = "ลองอีกครั้ง..."; };
+
+    recognition.onerror = () => {
+        btn.classList.remove('pulse-red');
+        document.getElementById('speech-status').innerText = "Try again...";
+    };
+
     recognition.start();
 }
 
-function skipSpeech() { ELEMENTS.screens.speech.classList.add('hidden'); ELEMENTS.ui.hud.classList.remove('hidden'); gameState.qIndex++; gameState.isPlaying = true; loadQuestion(); gameLoop(); }
-
-function speakQuestion(text) {
-    const t = text || gameState.currentQuestion?.q;
-    if (t) { const u = new SpeechSynthesisUtterance(t); u.lang = 'en-US'; u.rate = 0.8; speechSynthesis.speak(u); }
+function closeSpeech() {
+    document.getElementById('screen-speech').classList.add('hidden');
+    state.qIndex++;
+    state.items = [];
+    state.isPlaying = true;
+    loadNextQuestion();
 }
 
-function showToast(msg, color="red") {
-    const t = ELEMENTS.ui.toast; t.innerText = msg; t.className = `absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white z-[90]`;
-    t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 1500);
+function speakText(txt) {
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    speechSynthesis.speak(u);
 }
 
-function gameOver() { gameState.isPlaying = false; ELEMENTS.ui.hud.classList.add('hidden'); ELEMENTS.screens.end.classList.remove('hidden'); ELEMENTS.ui.finalScore.innerText = gameState.score; }
-function submitLogin() { if (document.getElementById('input-name').value) startCamera(); }
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 2000);
+}
 
-window.addEventListener('resize', () => { ELEMENTS.canvas.width = window.innerWidth; ELEMENTS.canvas.height = window.innerHeight; });
-window.dispatchEvent(new Event('resize'));
+function endGame() {
+    state.isPlaying = false;
+    document.getElementById('screen-end').classList.remove('hidden');
+    document.getElementById('final-score').innerText = state.score;
+}
 </script>
 </body>
 </html>
