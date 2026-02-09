@@ -3,605 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR English Eat - M.1 (Mobile Fix)</title>
+    <title>AR English Eat - M.1 Adventure</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { overscroll-behavior: none; background-color: #1a202c; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* แก้ไข Canvas ให้เต็มจอและกลับด้านแนวนอน (Mirror) */
-        canvas { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loader {
-            border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
-            border-top: 4px solid #a855f7; width: 40px; height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        .scroll-content::-webkit-scrollbar { width: 8px; }
-        .scroll-content::-webkit-scrollbar-track { background: #2d3748; border-radius: 4px; }
-        .scroll-content::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        
+        body { font-family: 'Prompt', sans-serif; background: #0f172a; overscroll-behavior: none; }
+        canvas { width: 100%; height: 100%; object-fit: cover; }
+        .glass { background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-game { background: linear-gradient(to bottom, #a855f7, #7e22ce); box-shadow: 0 4px 0 #581c87; transition: all 0.1s; }
+        .btn-game:active { transform: translateY(4px); box-shadow: 0 0 0 #581c87; }
+        .loader { width: 40px; height: 40px; border: 4px solid #FFF; border-bottom-color: #a855f7; border-radius: 50%; animation: rot 1s linear infinite; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .floating { animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-        
-        .hidden { display: none !important; }
-        
-        /* เพิ่มสไตล์สำหรับ video element ที่ซ่อนอยู่ */
-        #input-video {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden text-white select-none">
-    <div id="game-container" class="relative w-full h-full flex justify-center items-center bg-gray-900">
-        
-        <video id="input-video" playsinline webkit-playsinline muted></video>
-        <canvas id="output-canvas" class="absolute inset-0 w-full h-full"></canvas>
 
-        <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between z-10 p-4">
-            <div id="hud" class="hidden bg-black/60 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/10 transition-opacity duration-300 pointer-events-auto">
-                <div id="user-info-display" class="text-xs text-gray-400 mb-1 flex justify-between px-2">
-                    <span id="display-name">Guest</span>
-                    <span id="display-number">#00</span>
-                </div>
-                <div class="flex justify-center items-center gap-3 mb-2">
-                    <div id="question-text" class="text-yellow-400 text-xl md:text-2xl font-bold drop-shadow-md">Loading...</div>
-                    <button onclick="speakQuestion()" class="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition shadow-lg active:scale-90" title="Listen">🔊</button>
-                </div>
-                <div class="flex justify-between items-center text-sm md:text-base text-gray-200 px-4">
-                    <span id="score-text" class="text-green-400 font-bold">Score: 0</span>
-                    <span id="status-text" class="text-xs text-gray-400">Open mouth to eat! 😲</span>
-                </div>
-            </div>
-            <div id="toast" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-lg z-[80]">Error</div>
+
+    <!-- Game Layer -->
+    <div id="game-container" class="relative w-full h-full flex justify-center items-center">
+        <video class="hidden" playsinline></video>
+        <canvas id="output-canvas" class="absolute inset-0"></canvas>
+       
+        <!-- Quick Loader -->
+        <div id="quick-loader" class="absolute z-20 flex flex-col items-center justify-center pointer-events-none hidden">
+            <span class="loader mb-2"></span>
+            <p class="text-white text-xs bg-black/50 px-3 py-1 rounded-full">เปิดกล้อง...</p>
         </div>
 
-        <div id="screen-login" class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
-            <div class="w-full max-w-md bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
-                <h1 class="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">AR English Eat</h1>
-                <p class="text-center text-gray-400 mb-8">M.1 Level Up (Mobile Optimized)</p>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Nickname (English)</label>
-                        <input id="input-name" type="text" placeholder="e.g. Somchai" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition">
+
+        <!-- HUD -->
+        <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-10">
+            <div id="hud" class="glass rounded-2xl p-3 flex flex-col gap-2 transition-opacity duration-300 hidden">
+                <div class="flex justify-between items-center px-1">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center font-bold text-xl shadow-lg" id="score-box">0</div>
+                        <div class="text-xs text-gray-300"><div class="font-bold text-white">SCORE</div><div id="player-label">Guest</div></div>
                     </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Class Number</label>
-                        <input id="input-number" type="tel" placeholder="e.g. 15" class="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition">
-                    </div>
-                    <button onclick="submitLogin()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95">START GAME</button>
+                    <button onclick="readQuestion()" class="pointer-events-auto bg-white/10 p-2 rounded-full hover:bg-white/20 active:scale-95">🔊 โจทย์</button>
                 </div>
-                
-                <div class="mt-6 text-center">
-                    <button onclick="openAdminPass()" class="text-xs text-gray-500 hover:text-gray-300">Admin Panel (Teacher)</button>
-                </div>
+                <div id="question-text" class="text-center text-yellow-300 text-lg md:text-xl font-bold py-1 bg-black/20 rounded-lg">Loading...</div>
+            </div>
+            <div id="toast" class="self-center glass px-6 py-2 rounded-full text-sm font-bold text-red-400 hidden animate-bounce">Wrong!</div>
+        </div>
+
+
+        <!-- Login Screen -->
+        <div id="screen-login" class="absolute inset-0 bg-[#0f172a] z-50 flex flex-col justify-center items-center p-6">
+            <button onclick="openAdmin()" class="absolute top-4 right-4 text-xs text-gray-500 pointer-events-auto">🔒 Admin</button>
+            <div class="text-center mb-6 floating">
+                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">AR English Eat</h1>
+                <p class="text-gray-400 text-sm">M.1 Adventure</p>
+            </div>
+            <div class="glass p-6 rounded-3xl w-full max-w-sm space-y-3 shadow-2xl">
+                <input type="text" id="inp-name" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl p-3 text-white focus:border-purple-500 outline-none" placeholder="ชื่อเล่น">
+                <input type="number" id="inp-num" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl p-3 text-white focus:border-purple-500 outline-none" placeholder="เลขที่">
+                <button onclick="startGameFlow()" class="w-full btn-game py-3 rounded-xl font-bold text-lg pointer-events-auto mt-2">🚀 เริ่มเลย</button>
             </div>
         </div>
 
-        <div id="screen-password" class="hidden absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
-            <div class="bg-gray-800 p-6 rounded-2xl w-full max-w-sm border border-gray-700">
-                <h3 class="text-xl font-bold mb-4 text-center">Teacher Access</h3>
-                <input id="admin-pass-input" type="password" placeholder="Password (1234)" class="w-full bg-gray-700 rounded-lg px-4 py-2 mb-4 text-white">
+
+        <!-- Admin -->
+        <div id="screen-admin" class="absolute inset-0 bg-black/95 z-[60] hidden flex-col justify-center items-center p-6">
+            <div id="admin-login" class="glass p-6 rounded-2xl w-full max-w-xs text-center">
+                <h3 class="font-bold mb-4">🔑 Admin</h3>
+                <input type="password" id="admin-pass" class="w-full bg-gray-800 p-2 rounded mb-4 text-center border border-gray-600" placeholder="PIN">
                 <div class="flex gap-2">
-                    <button onclick="closePasswordModal()" class="flex-1 bg-gray-600 py-2 rounded-lg">Cancel</button>
-                    <button onclick="checkAdminPassword()" class="flex-1 bg-purple-600 py-2 rounded-lg">Enter</button>
+                    <button onclick="closeAdmin()" class="flex-1 py-2 bg-gray-700 rounded">Cancel</button>
+                    <button onclick="checkAdmin()" class="flex-1 py-2 bg-blue-600 rounded font-bold">Login</button>
                 </div>
             </div>
-        </div>
-
-        <div id="screen-load" class="hidden absolute inset-0 z-40 bg-gray-900 flex flex-col items-center justify-center">
-            <div class="loader mb-4"></div>
-            <p id="loading-text" class="text-gray-400 animate-pulse text-center px-4">Requesting Camera...<br><span class="text-xs text-gray-500">Please Allow Camera Access</span></p>
-        </div>
-
-        <div id="screen-tutorial" class="hidden absolute inset-0 z-45 bg-black/90 flex flex-col items-center justify-center p-6 text-center">
-            <div class="floating text-6xl mb-4">😲</div>
-            <h2 class="text-3xl font-bold text-yellow-400 mb-4">How to Play</h2>
-            <ul class="text-left space-y-3 text-gray-300 mb-8 max-w-sm mx-auto">
-                <li>1. Read the question.</li>
-                <li>2. Find the falling answer.</li>
-                <li>3. <b>Open your mouth</b> to eat the correct word!</li>
-            </ul>
-            <div class="h-64 overflow-y-auto w-full max-w-md bg-gray-800 rounded-lg p-4 mb-4 border border-gray-700 scroll-content">
-                <h3 class="text-purple-400 font-bold mb-2 sticky top-0 bg-gray-800 pb-2">Vocabulary (M.1)</h3>
-                <div id="cheat-list" class="space-y-2 text-sm"></div>
-            </div>
-            <button id="tutorial-btn" class="px-8 py-3 bg-purple-600 rounded-full font-bold shadow-lg">I'm Ready!</button>
-        </div>
-
-        <div id="screen-speech" class="hidden absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-6">
-            <div class="bg-gray-800 p-8 rounded-3xl max-w-md w-full text-center border border-purple-500/30 shadow-2xl">
-                <h2 class="text-2xl font-bold text-white mb-2">Bonus Round! 🎤</h2>
-                <div id="speech-target-word" class="text-4xl font-bold text-yellow-400 mb-2 mt-4">TARGET</div>
-                <div id="speech-status" class="h-8 text-sm text-purple-300 mb-4">Tap mic & say the word</div>
-                <button onclick="startSpeechRecognition()" class="w-20 h-20 bg-purple-600 hover:bg-purple-500 rounded-full flex items-center justify-center text-4xl shadow-lg transition transform active:scale-90 mx-auto mb-4">🎙️</button>
-                <button onclick="skipSpeech()" class="text-gray-500 text-sm hover:text-white underline">Skip</button>
-            </div>
-        </div>
-
-        <div id="screen-end" class="hidden absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
-            <div class="text-center">
-                <div class="text-6xl mb-4">🏆</div>
-                <h2 class="text-4xl font-bold text-white mb-2">Game Over!</h2>
-                <div class="text-gray-400 mb-6"><span id="end-name" class="font-bold text-purple-400">Guest</span> (#<span id="end-number">00</span>)</div>
-                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 min-w-[280px] mb-8">
-                    <div class="text-gray-500 text-sm uppercase tracking-wider mb-1">Total Score</div>
-                    <div id="final-score" class="text-5xl font-bold text-green-400">0</div>
+            <div id="admin-panel" class="hidden w-full max-w-md h-3/4 glass rounded-xl flex flex-col">
+                <div class="p-3 border-b border-gray-700 flex justify-between bg-gray-800">
+                    <span class="font-bold text-purple-400">Scoreboard</span>
+                    <button onclick="closeAdmin()" class="text-xs bg-gray-700 px-2 py-1 rounded">Close</button>
                 </div>
-                <div class="space-y-3 w-full max-w-xs">
-                    <button onclick="restartGame()" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-200">Play Next Student</button>
-                    <button onclick="openAdminPass()" class="w-full bg-gray-700 text-gray-300 font-bold py-3 rounded-xl shadow hover:bg-gray-600 text-sm">Teacher Panel</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="screen-admin" class="hidden absolute inset-0 z-[70] bg-gray-900 flex flex-col p-4 overflow-hidden">
-            <div class="flex justify-between items-center mb-4 bg-gray-800 p-4 rounded-xl shadow-lg">
-                <div>
-                    <h2 class="text-2xl font-bold text-purple-400">Classroom Scoreboard</h2>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold text-sm shadow">Export</button>
-                    <button onclick="clearData()" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-bold text-sm shadow">Clear</button>
-                    <button onclick="closeAdminPanel()" class="bg-gray-600 px-4 py-2 rounded text-sm">Close</button>
-                </div>
-            </div>
-            <div class="bg-gray-800 rounded-xl overflow-hidden flex-1 border border-gray-700 relative shadow-inner">
-                <div class="overflow-y-auto h-full p-4">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="text-gray-400 text-xs uppercase bg-gray-700 sticky top-0 shadow">
-                            <tr><th class="p-3">No.</th><th class="p-3">Name</th><th class="p-3 text-right">Score</th></tr>
-                        </thead>
-                        <tbody id="admin-table-body" class="text-sm divide-y divide-gray-700"></tbody>
+                <div class="flex-1 overflow-auto p-0">
+                    <table class="w-full text-sm text-left text-gray-300">
+                        <thead class="bg-gray-900 text-xs uppercase"><tr><th class="p-3">Time</th><th class="p-3">Name</th><th class="p-3 text-right">Score</th></tr></thead>
+                        <tbody id="admin-list" class="divide-y divide-gray-700"></tbody>
                     </table>
                 </div>
+                <div class="p-3 bg-gray-800 flex justify-between">
+                    <button onclick="loadAdminData()" class="text-blue-400 text-xs">↻ Refresh</button>
+                    <button onclick="exportAll()" class="bg-green-600 px-3 py-1 rounded text-xs font-bold">📥 Excel</button>
+                </div>
             </div>
+        </div>
+
+
+        <!-- Speech -->
+        <div id="screen-speech" class="absolute inset-0 bg-black/90 z-30 hidden flex-col justify-center items-center text-center p-6 backdrop-blur-md">
+            <h2 class="text-xl text-purple-300 font-bold mb-2">พูดคำนี้</h2>
+            <div id="sp-word" class="text-5xl font-extrabold text-white mb-2 tracking-wide drop-shadow-lg">...</div>
+            <div id="sp-meaning" class="text-xl text-yellow-400 font-bold bg-gray-800 px-4 py-2 rounded-full border border-yellow-500/30 mb-8">...</div>
+            <div class="relative w-32 h-32 flex items-center justify-center">
+                <div class="absolute inset-0 bg-purple-600 rounded-full opacity-20 animate-ping"></div>
+                <div class="text-4xl">🎙️</div>
+            </div>
+            <p id="sp-status" class="mt-8 text-gray-400">กำลังฟัง...</p>
+            <button onclick="endSpeech(false)" class="mt-4 text-xs text-gray-500 underline pointer-events-auto">ข้าม</button>
+        </div>
+
+
+        <!-- End Screen -->
+        <div id="screen-end" class="absolute inset-0 bg-[#0f172a]/95 z-50 hidden flex-col justify-center items-center p-6 text-center">
+            <h1 class="text-5xl font-black text-white mb-2">จบเกม!</h1>
+            <div class="text-gray-400 mb-6"><span id="end-player" class="text-purple-400 font-bold text-xl">Guest</span></div>
+            <div class="bg-gray-800/50 p-8 rounded-full border-4 border-yellow-400/50 mb-6 w-40 h-40 flex items-center justify-center">
+                <div><div class="text-xs text-gray-400">SCORE</div><div id="final-score" class="text-5xl font-black text-yellow-400">0</div></div>
+            </div>
+            <div id="save-msg" class="h-6 text-sm text-green-400 font-bold mb-4"></div>
+            <button onclick="exportSelf()" class="w-full max-w-xs bg-green-600 py-3 rounded-xl font-bold mb-3 pointer-events-auto">📥 โหลดคะแนน</button>
+            <button onclick="location.reload()" class="w-full max-w-xs bg-gray-700 py-3 rounded-xl font-bold pointer-events-auto">🔄 เล่นอีกครั้ง</button>
         </div>
     </div>
 
-<script>
-// --- CONFIGURATION ---
-const CONFIG = {
-    mouthThreshold: 0.05,
-    eatDistance: 60,
-    gravity: 2.5, // เร็วขึ้นนิดหน่อยเพื่อความสนุก
-    spawnRate: 100,
-    totalQuestions: 5
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+const app = initializeApp(JSON.parse(__firebase_config));
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+
+signInAnonymously(auth).catch(console.error);
+
+
+window.saveScore = async () => {
+    if (!window.G) return;
+    const msg = document.getElementById('save-msg');
+    msg.innerText = "กำลังบันทึก...";
+    if (!auth.currentUser) { setTimeout(window.saveScore, 1000); return; }
+    try {
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'scores'), {
+            name: window.G.user.name, number: window.G.user.number, score: window.G.score,
+            history: window.G.history, timestamp: serverTimestamp(), date: new Date().toLocaleString()
+        });
+        msg.innerText = "✅ บันทึกแล้ว";
+    } catch (e) { msg.innerText = "⚠️ บันทึกไม่ได้ (ใช้ Excel แทน)"; }
 };
 
-// --- QUESTIONS (M.1) ---
-const QUESTIONS_DB = [
-    { q: "Past tense of 'Go'?", list: ["Went", "Gone", "Goes", "Going", "Good"], correct: ["Went"] },
-    { q: "Past tense of 'Buy'?", list: ["Bought", "Buyed", "Buying", "Bring", "Boat"], correct: ["Bought"] },
-    { q: "Opposite of 'Expensive'?", list: ["Cheap", "Rich", "Hard", "Small", "Gold"], correct: ["Cheap"] },
-    { q: "A place to borrow books?", list: ["Library", "Market", "Zoo", "Park", "Shop"], correct: ["Library"] },
-    { q: "Who works in a hospital?", list: ["Doctor", "Teacher", "Pilot", "Chef", "Artist"], correct: ["Doctor"] },
-    { q: "The capital of Thailand?", list: ["Bangkok", "London", "Tokyo", "Phuket", "China"], correct: ["Bangkok"] },
-    { q: "Twelve months make a...?", list: ["Year", "Week", "Day", "Hour", "Time"], correct: ["Year"] },
-    { q: "Opposite of 'Dangerous'?", list: ["Safe", "Scary", "Hard", "Big", "Easy"], correct: ["Safe"] },
-    { q: "Subject about numbers?", list: ["Math", "Art", "Music", "Thai", "Gym"], correct: ["Math"] },
-    { q: "What is H2O?", list: ["Water", "Fire", "Air", "Earth", "Gold"], correct: ["Water"] }
+
+window.loadAdminData = async () => {
+    const list = document.getElementById('admin-list');
+    list.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Loading...</td></tr>';
+    if (!auth.currentUser) return;
+    try {
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'scores'));
+        let docs = [];
+        snap.forEach(d => docs.push(d.data()));
+        docs.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        window.adminCache = docs;
+        list.innerHTML = docs.map(d => `<tr class="border-b border-gray-700"><td class="p-3 font-mono">${d.date?.split(',')[0]||'-'}</td><td class="p-3"><div class="font-bold text-white">${d.name}</div><div class="text-xs text-yellow-500">#${d.number}</div></td><td class="p-3 text-right font-bold text-green-400">${d.score}</td></tr>`).join('');
+    } catch(e) { list.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-400">Error</td></tr>'; }
+};
+</script>
+
+
+<script>
+const CFG = { gravity: 1.5, spawnRate: 110, eatDist: 100, mouthThresh: 0.04 };
+window.G = { playing: false, score: 0, qIdx: 0, items: [], history: [], mouth: {x:0, y:0, open:false}, user: {name:'', number:''}, pendingItem: null };
+
+
+// QUESTIONS: Cleaned up (No phonetic, just Meaning 'm')
+const QUESTIONS = [
+    { q: "Yesterday, I ___ to school.", c: "went", w: ["go","goes"], m: "ไป (อดีต)" },
+    { q: "I don't have ___ money.", c: "any", w: ["some","a"], m: "บ้าง (ใช้ในประโยคปฏิเสธ)" },
+    { q: "This book is ___.", c: "mine", w: ["my","me"], m: "ของฉัน" },
+    { q: "Opposite of 'Small'", c: "Big", w: ["Short","Long"], m: "ใหญ่" },
+    { q: "A ___ teaches students.", c: "Teacher", w: ["Doctor","Pilot"], m: "ครู" },
+    { q: "___ you speak English?", c: "Do", w: ["Are","Is"], m: "ใช้นำหน้าประโยคคำถาม" },
+    { q: "She is ___ than me.", c: "taller", w: ["tall","tallest"], m: "สูงกว่า" },
+    { q: "See you ___ Monday.", c: "on", w: ["in","at"], m: "ใช้กับ วัน (จันทร์-อาทิตย์)" },
+    { q: "We ___ eating now.", c: "are", w: ["is","do"], m: "เป็น/อยู่/คือ (ใช้กับ We)" },
+    { q: "Fish ___ in water.", c: "swim", w: ["fly","run"], m: "ว่ายน้ำ" }
 ];
 
-// --- STATE MANAGEMENT ---
-const ELEMENTS = {
-    video: document.getElementById('input-video'),
-    canvas: document.getElementById('output-canvas'),
-    screens: {
-        login: document.getElementById('screen-login'),
-        password: document.getElementById('screen-password'),
-        load: document.getElementById('screen-load'),
-        end: document.getElementById('screen-end'),
-        speech: document.getElementById('screen-speech'),
-        tutorial: document.getElementById('screen-tutorial'),
-        admin: document.getElementById('screen-admin')
-    },
-    ui: {
-        hud: document.getElementById('hud'),
-        question: document.getElementById('question-text'),
-        score: document.getElementById('score-text'),
-        finalScore: document.getElementById('final-score'),
-        toast: document.getElementById('toast'),
-        cheatList: document.getElementById('cheat-list'),
-        speechTarget: document.getElementById('speech-target-word'),
-        speechStatus: document.getElementById('speech-status')
-    },
-    inputs: {
-        name: document.getElementById('input-name'),
-        number: document.getElementById('input-number'),
-        adminPass: document.getElementById('admin-pass-input')
-    }
-};
 
-const ctx = ELEMENTS.canvas.getContext('2d');
-
-let gameState = {
-    isPlaying: false,
-    score: 0,
-    qIndex: 0,
-    items: [],
-    mouthPos: { x: 0, y: 0 },
-    isMouthOpen: false,
-    frameCount: 0,
-    currentQuestion: null,
-    user: { name: "", number: "" },
-    history: [],
-    cameraActive: false
-};
-
-// --- LOCAL STORAGE ---
-function loadHistory() {
-    const stored = localStorage.getItem('ar_english_scores');
-    if (stored) gameState.history = JSON.parse(stored);
-}
-function saveHistory(record) {
-    gameState.history.push(record);
-    localStorage.setItem('ar_english_scores', JSON.stringify(gameState.history));
-}
-function clearData() {
-    if(confirm("Clear ALL data?")) {
-        gameState.history = [];
-        localStorage.removeItem('ar_english_scores');
-        openAdminPanel();
-    }
-}
-loadHistory();
-
-// --- INIT CHEAT SHEET ---
-ELEMENTS.ui.cheatList.innerHTML = QUESTIONS_DB.map((q) => `
-    <div class="bg-gray-700/50 p-2 rounded border border-gray-600/50 mb-1">
-        <div class="text-yellow-300 text-xs font-semibold">${q.q}</div>
-        <div class="text-green-400 text-xs">${q.correct[0]}</div>
-    </div>
-`).join('');
-
-// --- MEDIA PIPE FACEMESH SETUP (MOBILE OPTIMIZED) ---
-// เราโหลด FaceMesh แต่ไม่ใช้ Camera Utils เพื่อลดความซับซ้อนและควบคุมได้เอง
-let faceMesh;
-async function initFaceMesh() {
-    faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: false, // ปิดอันนี้บนมือถือจะเร็วขึ้นมาก
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
-    faceMesh.onResults(onResults);
-    await faceMesh.initialize();
+async function initCamera() {
+    document.getElementById('quick-loader').classList.remove('hidden');
+    const video = document.querySelector('video');
+    const faceMesh = new FaceMesh({locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
+    faceMesh.setOptions({maxNumFaces: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5});
+    faceMesh.onResults(onFaceResults);
+    const camera = new Camera(video, { onFrame: async () => await faceMesh.send({image: video}), width: 1280, height: 720 });
+    await camera.start();
 }
 
-// --- NEW CAMERA LOGIC (NATIVE) ---
-async function startCamera() {
-    try {
-        ELEMENTS.screens.login.classList.add('hidden');
-        ELEMENTS.screens.load.classList.remove('hidden');
-        document.getElementById('loading-text').innerText = "Loading AI Model...";
 
-        if (!faceMesh) await initFaceMesh();
+const ctx = document.getElementById('output-canvas').getContext('2d');
+let camReady = false;
 
-        document.getElementById('loading-text').innerText = "Starting Camera...";
-        
-        // ขอใช้กล้องแบบ Native (ระบุ facingMode: user เพื่อเอากล้องหน้าแน่นอน)
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                facingMode: 'user', 
-                width: { ideal: 640 }, 
-                height: { ideal: 480 } 
-            },
-            audio: false
-        });
 
-        ELEMENTS.video.srcObject = stream;
-        
-        // รอให้วิดีโอพร้อมทำงาน
-        return new Promise((resolve) => {
-            ELEMENTS.video.onloadedmetadata = () => {
-                ELEMENTS.video.play();
-                gameState.cameraActive = true;
-                predictLoop(); // เริ่ม Loop จับหน้า
-                
-                // Camera Ready
-                ELEMENTS.screens.load.classList.add('hidden');
-                ELEMENTS.screens.tutorial.classList.remove('hidden');
-                resolve();
-            };
-        });
+function onFaceResults(res) {
+    const w = ctx.canvas.width = window.innerWidth;
+    const h = ctx.canvas.height = window.innerHeight;
+    ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1); ctx.clearRect(0, 0, w, h); ctx.drawImage(res.image, 0, 0, w, h); ctx.restore();
 
-    } catch (e) {
-        alert("Camera Error: " + e.message + "\nPlease use Chrome/Safari and allow camera access.");
-        ELEMENTS.screens.load.classList.add('hidden');
-        ELEMENTS.screens.login.classList.remove('hidden');
+
+    if (res.multiFaceLandmarks && res.multiFaceLandmarks.length > 0) {
+        const lm = res.multiFaceLandmarks[0];
+        const uLip = lm[13], lLip = lm[14], head = lm[10], chin = lm[152];
+        G.mouth.open = Math.abs(uLip.y - lLip.y) > (Math.abs(head.y - chin.y) * CFG.mouthThresh);
+        G.mouth.x = (1 - ((uLip.x + lLip.x) / 2)) * w;
+        G.mouth.y = ((uLip.y + lLip.y) / 2) * h;
+
+
+        ctx.beginPath(); ctx.arc(G.mouth.x, G.mouth.y, G.mouth.open ? 40 : 20, 0, 2*Math.PI);
+        ctx.lineWidth = 4; ctx.strokeStyle = G.mouth.open ? '#4ade80' : '#f472b6'; ctx.stroke();
+       
+        if (!camReady) { camReady = true; document.getElementById('quick-loader').classList.add('hidden'); realStart(); }
     }
 }
 
-// Loop ส่งภาพให้ AI (แทน Camera Utils)
-async function predictLoop() {
-    if (gameState.cameraActive) {
-        await faceMesh.send({ image: ELEMENTS.video });
-        requestAnimationFrame(predictLoop); // ทำซ้ำเรื่อยๆ
-    }
-}
-
-// --- GAME LOGIC ---
-function submitLogin() {
-    const name = ELEMENTS.inputs.name.value.trim();
-    const num = ELEMENTS.inputs.number.value.trim();
-    if (!name || !num) { showToast("Enter Name & Number"); return; }
-    
-    gameState.user = { name, number: num };
-    document.getElementById('display-name').innerText = name;
-    document.getElementById('display-number').innerText = `#${num}`;
-    document.getElementById('end-name').innerText = name;
-    document.getElementById('end-number').innerText = num;
-
-    // เริ่มโหลดกล้อง
-    startCamera();
-}
-
-document.getElementById('tutorial-btn').onclick = () => {
-    ELEMENTS.screens.tutorial.classList.add('hidden');
-    startGame();
-};
-
-function startGame() {
-    gameState.score = 0;
-    gameState.qIndex = 0;
-    gameState.isPlaying = true;
-    gameState.items = [];
-    
-    QUESTIONS_DB.sort(() => Math.random() - 0.5); // Shuffle
-    ELEMENTS.ui.hud.classList.remove('hidden');
-    
-    loadQuestion();
-    gameLoop(); // เริ่ม Game Loop (Physic & Drawing)
-}
-
-function loadQuestion() {
-    if (gameState.qIndex >= CONFIG.totalQuestions) {
-        gameOver();
-        return;
-    }
-    gameState.currentQuestion = QUESTIONS_DB[gameState.qIndex];
-    ELEMENTS.ui.question.innerText = gameState.currentQuestion.q;
-    ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    gameState.items = [];
-    speakQuestion();
-}
-
-function onResults(results) {
-    // วาดภาพวิดีโอลง Canvas
-    ctx.save();
-    ctx.clearRect(0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-    
-    // วาดภาพจากกล้อง (Mirror ไว้แล้วใน CSS แต่ใน JS ต้อง Flip เพื่อให้ตำแหน่งปากตรงกับภาพ)
-    // ตรงนี้เราวาดแบบปกติ เพราะ CSS พลิก Canvas ทั้งอันให้แล้ว
-    ctx.drawImage(results.image, 0, 0, ELEMENTS.canvas.width, ELEMENTS.canvas.height);
-
-    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        const landmarks = results.multiFaceLandmarks[0];
-        const upper = landmarks[13];
-        const lower = landmarks[14];
-        
-        // คำนวณตำแหน่ง (เนื่องจาก Canvas ถูก CSS พลิก เราต้องคำนวณ X ให้ตรงข้ามถ้าจะใช้ Logic เดิม)
-        // แต่เพื่อความง่าย เราใช้ Coordinate ปกติ แล้วให้ CSS จัดการการมองเห็น
-        const x = upper.x * ELEMENTS.canvas.width;
-        const y = (upper.y + lower.y) / 2 * ELEMENTS.canvas.height;
-        
-        gameState.mouthPos = { x, y };
-        
-        const distance = Math.abs(upper.y - lower.y); // ระยะห่างปากบนล่าง (Normalized 0.0 - 1.0)
-        gameState.isMouthOpen = distance > CONFIG.mouthThreshold;
-
-        // วาดจุดที่ปาก (Visual Debug)
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, 2 * Math.PI);
-        ctx.strokeStyle = gameState.isMouthOpen ? "#00ff00" : "#ff0000";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-    }
-    ctx.restore();
-}
 
 function gameLoop() {
-    if (!gameState.isPlaying) return;
+    if (!G.playing) return;
+    if (Math.random() * 1000 < (1000/CFG.spawnRate)) spawnItem();
 
-    ctx.save();
-    // ตัวแปรปรับสเกลเพื่อให้เล่นบนจอมือถือและจอคอมได้เหมือนกัน
-    // ของเดิม Canvas ถูก Flip ด้วย CSS ดังนั้น Text จะกลับด้าน เราต้อง Scale Text คืน
-    
-    gameState.frameCount++;
-    if (gameState.frameCount % CONFIG.spawnRate === 0) spawnItem();
 
-    for (let i = gameState.items.length - 1; i >= 0; i--) {
-        let item = gameState.items[i];
-        item.y += CONFIG.gravity;
+    ctx.font = "bold 28px 'Prompt'"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (let i = G.items.length - 1; i >= 0; i--) {
+        let it = G.items[i]; it.y += it.vy; it.x += it.vx;
+        const tw = ctx.measureText(it.text).width + 30, th = 46;
+       
+        ctx.fillStyle = it.type === 'c' ? "rgba(34, 197, 94, 0.9)" : "rgba(239, 68, 68, 0.9)";
+        ctx.beginPath(); ctx.roundRect(it.x - tw/2, it.y - th/2, tw, th, 15); ctx.fill();
+        ctx.fillStyle = "white"; ctx.fillText(it.text, it.x, it.y);
 
-        // วาดคำศัพท์
-        ctx.save();
-        ctx.translate(item.x, item.y);
-        ctx.scale(-1, 1); // พลิกตัวอักษรกลับให้อ่านออก (เพราะ Canvas หลักโดนพลิก)
-        
-        ctx.font = "bold 28px sans-serif";
-        ctx.fillStyle = item.isCorrect ? "#4ade80" : "#ffffff"; // สีเขียวถ้าถูก ขาวถ้าผิด (ช่วยใบ้นิดนึง)
-        ctx.shadowColor = "black";
-        ctx.shadowBlur = 4;
-        ctx.textAlign = "center";
-        ctx.fillText(item.text, 0, 0);
-        ctx.restore();
 
-        // ตรวจจับการกิน
-        if (gameState.isMouthOpen) {
-            const dx = gameState.mouthPos.x - item.x;
-            const dy = gameState.mouthPos.y - item.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist < CONFIG.eatDistance) {
-                handleEat(item);
-                gameState.items.splice(i, 1);
-                continue;
-            }
-        }
-
-        if (item.y > ELEMENTS.canvas.height) gameState.items.splice(i, 1);
+        if (Math.sqrt((it.x-G.mouth.x)**2 + (it.y-G.mouth.y)**2) < CFG.eatDist && G.mouth.open) handleEat(it, i);
+        else if (it.y > ctx.canvas.height + 50) G.items.splice(i, 1);
     }
-    ctx.restore();
-    
-    if(gameState.isPlaying) requestAnimationFrame(gameLoop);
-}
-
-function spawnItem() {
-    if(!gameState.currentQuestion) return;
-    const margin = 50;
-    const x = margin + Math.random() * (ELEMENTS.canvas.width - margin * 2);
-    
-    const isCorrect = Math.random() < 0.45; // โอกาสออกข้อถูก 45%
-    let text = isCorrect ? gameState.currentQuestion.correct[0] : 
-               gameState.currentQuestion.list.filter(w => !gameState.currentQuestion.correct.includes(w))[Math.floor(Math.random() * 3)];
-    
-    gameState.items.push({ x, y: -20, text, isCorrect });
-}
-
-function handleEat(item) {
-    if (item.isCorrect) {
-        gameState.score += 10;
-        showToast("Yummy! +10", "green");
-        gameState.isPlaying = false;
-        setTimeout(() => { startSpeechRound(item.text); }, 500);
-    } else {
-        gameState.score = Math.max(0, gameState.score - 5);
-        showToast("Wrong! -5");
-        ELEMENTS.ui.score.innerText = `Score: ${gameState.score}`;
-    }
-}
-
-// --- SPEECH & UTILS ---
-function startSpeechRound(word) {
-    ELEMENTS.screens.speech.classList.remove('hidden');
-    ELEMENTS.ui.hud.classList.add('hidden');
-    ELEMENTS.ui.speechTarget.innerText = word;
-}
-
-function startSpeechRecognition() {
-    // ใช้ WebKitSpeechRecognition สำหรับ Chrome/Android/Safari (บางเวอร์ชัน)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        alert("Speech not supported on this browser.");
-        skipSpeech();
-        return;
-    }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    
-    ELEMENTS.ui.speechStatus.innerText = "Listening...";
-    recognition.start();
-
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        const target = ELEMENTS.ui.speechTarget.innerText.toLowerCase();
-        if (transcript.includes(target) || target.includes(transcript)) {
-            showToast("Perfect! +20", "green");
-            gameState.score += 20;
-            setTimeout(skipSpeech, 1000);
-        } else {
-            showToast(`Heard: ${transcript} (Try again)`);
-            ELEMENTS.ui.speechStatus.innerText = "Tap mic to try again";
-        }
-    };
-    recognition.onerror = () => { ELEMENTS.ui.speechStatus.innerText = "Error/No Match"; };
-}
-
-function skipSpeech() {
-    ELEMENTS.screens.speech.classList.add('hidden');
-    ELEMENTS.ui.hud.classList.remove('hidden');
-    gameState.qIndex++;
-    gameState.isPlaying = true;
-    loadQuestion();
     requestAnimationFrame(gameLoop);
 }
 
-function speakQuestion() {
-    if(gameState.currentQuestion) {
-        const u = new SpeechSynthesisUtterance(gameState.currentQuestion.q);
-        u.lang = 'en-US';
-        speechSynthesis.speak(u);
-    }
-}
 
-function showToast(msg, color="red") {
-    const t = ELEMENTS.ui.toast;
-    t.innerText = msg;
-    t.className = `absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-full shadow-lg z-[90] ${color === 'green' ? 'bg-green-500' : 'bg-red-500'} text-white animate-bounce`;
-    t.classList.remove('hidden');
-    setTimeout(() => t.classList.add('hidden'), 2000);
-}
-
-// Admin & Game Over
-function gameOver() {
-    gameState.isPlaying = false;
-    ELEMENTS.ui.hud.classList.add('hidden');
-    ELEMENTS.screens.end.classList.remove('hidden');
-    ELEMENTS.ui.finalScore.innerText = gameState.score;
-    saveHistory({
-        name: gameState.user.name,
-        number: gameState.user.number,
-        score: gameState.score,
-        time: new Date().toLocaleTimeString('th-TH')
+function spawnItem() {
+    const q = QUESTIONS[G.qIdx];
+    const isCorrect = Math.random() > 0.4;
+    G.items.push({
+        x: Math.random() * (ctx.canvas.width - 100) + 50, y: -50,
+        text: isCorrect ? q.c : q.w[Math.floor(Math.random()*q.w.length)],
+        type: isCorrect ? 'c' : 'w', vx: (Math.random()-0.5)*1.5, vy: Math.random()*1.5 + CFG.gravity
     });
 }
-function restartGame() {
-    ELEMENTS.inputs.name.value = "";
-    ELEMENTS.inputs.number.value = "";
-    ELEMENTS.screens.end.classList.add('hidden');
-    ELEMENTS.screens.login.classList.remove('hidden');
-    // กล้องยังเปิดอยู่ ไม่ต้องโหลดใหม่
-}
 
-// Admin Panel Logic
-function openAdminPass() { ELEMENTS.screens.password.classList.remove('hidden'); }
-function closePasswordModal() { ELEMENTS.screens.password.classList.add('hidden'); }
-function checkAdminPassword() {
-    if (ELEMENTS.inputs.adminPass.value === "1234") {
-        closePasswordModal();
-        openAdminPanel();
+
+function handleEat(item, idx) {
+    if (item.type === 'c') {
+        G.items = []; G.pendingItem = item; G.playing = false;
+        const q = QUESTIONS[G.qIdx];
+        document.getElementById('screen-speech').classList.remove('hidden');
+        document.getElementById('screen-speech').classList.add('flex');
+        document.getElementById('sp-word').innerText = item.text;
+        document.getElementById('sp-meaning').innerText = q.m; // Just meaning
+        startSpeech();
+    } else {
+        G.items.splice(idx, 1); G.score = Math.max(0, G.score - 5); updateHUD();
+        showToast(`กินผิด! ${item.text} -5`, 'red');
+        G.history.push({q:QUESTIONS[G.qIdx].q, ans:item.text, res:'Wrong'});
     }
 }
-function openAdminPanel() {
-    ELEMENTS.screens.admin.classList.remove('hidden');
-    const tbody = document.getElementById('admin-table-body');
-    loadHistory();
-    const sorted = [...gameState.history].reverse();
-    tbody.innerHTML = sorted.length ? sorted.map(h => `
-        <tr class="border-b border-gray-700">
-            <td class="p-3 text-gray-400">#${h.number}</td>
-            <td class="p-3 text-white">${h.name}</td>
-            <td class="p-3 text-right text-green-400 font-bold">${h.score}</td>
-        </tr>`).join('') : '<tr><td colspan="3" class="p-4 text-center">No Data</td></tr>';
-}
-function closeAdminPanel() { ELEMENTS.screens.admin.classList.add('hidden'); }
-function exportToExcel() {
-    if(!gameState.history.length) return;
-    const ws = XLSX.utils.json_to_sheet(gameState.history);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Scores");
-    XLSX.writeFile(wb, "AR_Scores.xlsx");
+
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+
+
+function startSpeech() {
+    const status = document.getElementById('sp-status');
+    status.innerText = "กำลังฟัง... (พูดเลย!)"; status.className = "mt-8 text-yellow-400 animate-pulse font-bold";
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition(); recognition.lang = 'en-US'; recognition.interimResults = true;
+        recognition.onresult = (e) => {
+            const t = e.results[e.results.length-1][0].transcript.toLowerCase(), target = G.pendingItem.text.toLowerCase();
+            if (t.includes(target) || target.includes(t) || (t[0]===target[0] && Math.abs(t.length-target.length)<3)) {
+                recognition.stop(); endSpeech(true);
+            }
+        };
+        recognition.start();
+    } else { status.innerText = "ไม่รองรับเสียง (รอสักครู่...)"; setTimeout(() => endSpeech(false), 2000); }
 }
 
-function resize() {
-    ELEMENTS.canvas.width = window.innerWidth;
-    ELEMENTS.canvas.height = window.innerHeight;
+
+function endSpeech(success) {
+    if (recognition) try{recognition.stop()}catch(e){};
+    document.getElementById('screen-speech').classList.add('hidden');
+    document.getElementById('screen-speech').classList.remove('flex');
+    G.score += (10 + (success?5:0));
+    showToast(success ? `เยี่ยม! +${15}` : `ผ่าน! +10`, 'green');
+    G.history.push({q:QUESTIONS[G.qIdx].q, ans:G.pendingItem.text, res:'Correct'});
+    if (++G.qIdx >= QUESTIONS.length) finishGame();
+    else { G.playing = true; loadLevel(); gameLoop(); }
 }
-window.addEventListener('resize', resize);
-resize();
+
+
+function startGameFlow() {
+    const name = document.getElementById('inp-name').value.trim();
+    if (!name) return alert("กรอกชื่อก่อน!");
+    G.user = {name, number: document.getElementById('inp-num').value.trim()};
+    document.getElementById('player-label').innerText = name;
+    document.getElementById('end-player').innerText = G.user.name;
+    document.getElementById('screen-login').classList.add('hidden');
+    initCamera();
+}
+
+
+function realStart() {
+    G.playing = true; G.score = 0; G.qIdx = 0;
+    document.getElementById('hud').classList.remove('hidden'); document.getElementById('hud').classList.add('flex');
+    loadLevel(); gameLoop();
+}
+
+
+function loadLevel() {
+    document.getElementById('question-text').innerText = `${G.qIdx+1}. ${QUESTIONS[G.qIdx].q}`;
+    updateHUD(); readQuestion();
+}
+
+
+function finishGame() {
+    G.playing = false;
+    document.getElementById('screen-end').classList.remove('hidden'); document.getElementById('screen-end').classList.add('flex');
+    document.getElementById('final-score').innerText = G.score;
+    if(window.saveScore) window.saveScore();
+}
+
+
+function updateHUD() { document.getElementById('score-box').innerText = G.score; }
+function showToast(msg, c) { const t=document.getElementById('toast'); t.innerText=msg; t.className=`self-center glass px-6 py-2 rounded-full text-sm font-bold animate-bounce text-${c}-400`; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),2000); }
+window.readQuestion = () => { if(G.playing) { const u = new SpeechSynthesisUtterance(QUESTIONS[G.qIdx].q); u.lang='en-US'; speechSynthesis.speak(u); }};
+
+
+window.openAdmin = () => { document.getElementById('screen-admin').classList.remove('hidden'); document.getElementById('screen-admin').classList.add('flex'); };
+window.closeAdmin = () => { document.getElementById('screen-admin').classList.add('hidden'); document.getElementById('screen-admin').classList.remove('flex'); };
+window.checkAdmin = () => { if(document.getElementById('admin-pass').value==='1234'){document.getElementById('admin-login').classList.add('hidden');document.getElementById('admin-panel').classList.remove('hidden');document.getElementById('admin-panel').classList.add('flex');if(window.loadAdminData)window.loadAdminData();}else alert("ผิด!"); };
+
+
+window.exportSelf = () => doExport([["Item","Result"],...G.history.map(h=>[h.ans,h.res])], `Score_${G.user.name}`);
+window.exportAll = () => window.adminCache ? doExport([["Time","Name","Score"],...window.adminCache.map(d=>[d.date,d.name,d.score])], "Scores") : alert("No Data");
+function doExport(data,f){const ws=XLSX.utils.aoa_to_sheet(data),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"S1");XLSX.writeFile(wb,`${f}.xlsx`);}
+window.onresize = () => { if(G.playing){ctx.canvas.width=window.innerWidth;ctx.canvas.height=window.innerHeight;} };
 </script>
 </body>
 </html>
